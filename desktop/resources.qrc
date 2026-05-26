@@ -1,0 +1,10 @@
+<RCC>
+  <qresource prefix="/">
+    <file>src/resources/fonts/IBMPlexSans-VariableFont_wdth,wght.ttf</file>
+    <file>src/resources/fonts/JetBrainsMono-VariableFont_wght.ttf</file>
+    <file>src/resources/style.qss</file>
+    <file>src/resources/logo.svg</file>
+    <file>src/resources/logo-blue.svg</file>
+    <file>src/resources/command_palette.qss</file>
+  </qresource>
+</RCC>

@@ -1,0 +1,103 @@
+/* ═══════════════════════════════════════════════════════════
+   Command Palette — VS Code Dark Theme
+   ═══════════════════════════════════════════════════════════ */
+
+/* Main container */
+QFrame#paletteContainer {
+  background-color: #252526;
+  border: 1px solid #454545;
+  border-top: none;
+  border-radius: 0px 0px 6px 6px;
+}
+
+/* Input row */
+QFrame#paletteInputRow {
+  background-color: #252526;
+  border: none;
+  border-bottom: none;
+}
+
+/* The ">" prefix */
+QLabel#palettePrefixLabel {
+  color: #CCCCCC;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 0px;
+  background: transparent;
+  border: none;
+}
+
+/* Search input */
+QLineEdit#paletteInput {
+  background-color: transparent;
+  color: #CCCCCC;
+  font-family: "Segoe UI", "San Francisco", sans-serif;
+  font-size: 14px;
+  padding: 4px 0px;
+  border: none;
+  selection-background-color: #094771;
+  selection-color: #FFFFFF;
+}
+
+QLineEdit#paletteInput:focus {
+  border: none;
+  outline: none;
+}
+
+/* Separator line between input and results */
+QFrame#paletteSeparator {
+  background-color: #3C3C3C;
+  border: none;
+}
+
+/* Results list */
+QListWidget#paletteResults {
+  background-color: #252526;
+  color: #CCCCCC;
+  border: none;
+  font-family: "Segoe UI", "San Francisco", sans-serif;
+  font-size: 13px;
+  outline: 0;
+  padding: 4px 4px;
+}
+
+QListWidget#paletteResults::item {
+  padding: 5px 10px;
+  border-radius: 3px;
+  margin: 1px 2px;
+}
+
+QListWidget#paletteResults::item:selected {
+  background-color: #094771;
+  color: #FFFFFF;
+}
+
+QListWidget#paletteResults::item:hover:!selected {
+  background-color: #2A2D2E;
+}
+
+/* Scrollbar styling */
+QListWidget#paletteResults QScrollBar:vertical {
+  width: 6px;
+  background: transparent;
+  border: none;
+}
+
+QListWidget#paletteResults QScrollBar::handle:vertical {
+  background-color: #424242;
+  border-radius: 3px;
+  min-height: 20px;
+}
+
+QListWidget#paletteResults QScrollBar::handle:vertical:hover {
+  background-color: #5A5A5A;
+}
+
+QListWidget#paletteResults QScrollBar::add-line:vertical,
+QListWidget#paletteResults QScrollBar::sub-line:vertical,
+QListWidget#paletteResults QScrollBar::add-page:vertical,
+QListWidget#paletteResults QScrollBar::sub-page:vertical {
+  height: 0px;
+  background: transparent;
+}

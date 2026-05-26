@@ -1,0 +1,4 @@
+desktop/build/
+*.db
+*.exe
+simulations/

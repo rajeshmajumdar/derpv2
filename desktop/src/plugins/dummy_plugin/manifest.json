@@ -1,0 +1,21 @@
+{
+  "id": "dummy",
+  "name": "Dummy Plugin",
+  "hasUi": true,
+  "hotkey": "d",
+  "role": "master",
+  "chord": {
+    "n": {
+      "intent": "dummy.new",
+      "description": "New intent"
+    },
+    "s": {
+      "intent": "dummy.save",
+      "description": "save intent"
+    }
+  },
+  "private": {
+    "f2": "dummy.print"
+  },
+  "listeners": ["dummy.test_topic"]
+}

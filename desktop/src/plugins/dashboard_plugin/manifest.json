@@ -1,0 +1,11 @@
+{
+  "id": "dashboard",
+  "name": "Dashboard",
+  "hasUi": true,
+  "hotkey": "g",
+  "intents": {
+    "n": "dashboard.new",
+    "s": "dashboard.save"
+  },
+  "listeners": ["dashboard.test_topic"]
+}

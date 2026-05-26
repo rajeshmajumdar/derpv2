@@ -1,0 +1,23 @@
+{
+  "id": "staff_manager",
+  "name": "User Management",
+  "hasUi": true,
+  "hotkey": "u",
+  "role": "master",
+  "chord": {
+    "n": {
+      "intent": "staff.create",
+      "description": "Add a new staff"
+    },
+    "v": {
+      "intent": "viewStaffIntent",
+      "description": "View the staff dashboard"
+    }
+  },
+  "private": {
+    "f2": "staff.create",
+    "f5": "focusSearchLineIntent",
+    "f10": "commitPermissionsMatrixIntent",
+    "delete": "revokeAccessActionIntent"
+  }
+}
