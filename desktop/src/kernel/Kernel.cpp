@@ -268,7 +268,18 @@ void Kernel::handleAccessDenied() {
 
 
 void Kernel::syncIntentsToDatabase() {
-  QSet<QString> protectedIntents = DBaseModule::getProtectedIntents();
+  QSet<QString> protectedIntents;
+  const QMap<QString, ModuleRecord*>& registry = m_pluginManager->allModules();
+
+  for (auto it = registry.begin(); it != registry.end(); ++it) {
+    QString moduleId = it.key();
+    DModule* genericModule = m_pluginManager->getModuleInstance(moduleId);
+    DBaseModule* plugin = dynamic_cast<DBaseModule*>(genericModule);
+
+    if (plugin) {
+      protectedIntents.unite(plugin->getProtectedIntents());
+    }
+  }
 
   QVariantMap groupedIntents;
 

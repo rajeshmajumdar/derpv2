@@ -53,7 +53,7 @@ class AddStaffDialog : public QDialog {
 
       //Header
       QLabel* title = new QLabel("Add new staff", container);
-      title->setStyleSheet("font-size: 22px; color: #1565C0; font-weight: 900;");
+      title->setStyleSheet("font-size: 22px; font-weight: 900;");
       title->setAlignment(Qt::AlignCenter);
       contentLayout->addWidget(title);
       contentLayout->addSpacing(10);
@@ -136,6 +136,12 @@ QWidget* StaffManager::createView(QWidget* parent) {
                         "   gridline-color: #E0E0E0;"
                         "   border: 1px solid #B0BEC5;"
                         "   border-radius: 4px;"
+                        "   selection-background-color: #1565C0;"
+                        "   selection-color: #FFFFFF;"
+                        "}"
+                        "QTableWidget::item:selected {"
+                        "   background-color: #1565C0;"
+                        "   color: #FFFFFF;"
                         "}"
                         "QHeaderView::section {"
                         "   background-color: #ECEFF1;"
@@ -251,6 +257,7 @@ void StaffManager::executeIntent(const QString& intent, const QVariantMap& data)
             m_core->log("[StaffManager] Staff member created successfully");
           }
           fetchStaffList();
+          setupPermissionMatrixUI();
           } else {
           if (m_core) m_core->log("[StaffManager] Failed to create staff.");
           }
@@ -259,6 +266,24 @@ void StaffManager::executeIntent(const QString& intent, const QVariantMap& data)
       if (m_core) m_core->log("[StaffManager] New staff dialog closed.");
     }
 
+    return;
+  }
+
+  // staff.nav_down
+  if (intent == "staff.nav_down") {
+    int currentRow = m_staffTable->currentRow();
+    if (currentRow < m_staffTable->rowCount() - 1) {
+      m_staffTable->selectRow(currentRow + 1);
+    }
+    return;
+  }
+
+  // staff.nav_up
+  if (intent == "staff.nav_up") {
+    int currentRow = m_staffTable->currentRow();
+    if (currentRow > 0) {
+      m_staffTable->selectRow(currentRow - 1);
+    }
     return;
   }
 }
@@ -319,40 +344,99 @@ void StaffManager::fetchStaffList() {
       statusItem->setForeground(QBrush(QColor("#2E7D32")));
       m_staffTable->setItem(i, 3, statusItem);
     }
+
+    if (m_staffTable->rowCount() > 0) {
+      m_staffTable->selectRow(0);
+    }
   });
 }
 
 
 void StaffManager::setupPermissionMatrixUI() {
-  m_permissionMatrixTable->setRowCount(0);
+  if (m_core) m_core->log("[StaffManager] Fetching intents from backend...");
 
-  auto createVisibleItem = [](const QString& text) {
-    auto* item = new QTableWidgetItem(text);
-    item->setForeground(QBrush(QColor("#212121")));
-    item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-    return item;
-  };
-
-  QStringList modules = {"Inventory Management", "Item 2", "Item 3", "Item 4"};
-
-  for (int i = 0; i < modules.size(); ++i) {
-    m_permissionMatrixTable->insertRow(i);
-    m_permissionMatrixTable->setItem(i, 0, createVisibleItem(modules[i]));
-
-    for (int col = 1; col <= 4; ++col) {
-      auto* container = new QWidget(m_permissionMatrixTable);
-      auto* layout = new QHBoxLayout(container);
-      auto* cb = new QCheckBox(container);
-
-      cb->setStyleSheet("QCheckBox::indicator { border: 1px solid #78909C; width: 16px; border-radius: 3px; }"
-                        "QCheckBox::checked { background-color: #1565C0; }");
-
-      layout->addWidget(cb);
-      layout->setAlignment(Qt::AlignCenter);
-      layout->setContentsMargins(0, 0, 0, 0);
-      container->setLayout(layout);
-
-      m_permissionMatrixTable->setCellWidget(i, col, container);
+  m_core->httpGet("/api/v1/system/intents", QVariantMap(), true, [this](QJsonDocument response) {
+    if (response.isNull() || !response.isObject()) {
+      if (m_core) m_core->log("[StaffManager] Error: failed to fetch intents from backend.");
+      return;
     }
-  }
+    m_permissionMatrixTable->setSortingEnabled(false);
+    m_permissionMatrixTable->setRowCount(0);
+
+    m_permissionMatrixTable->setStyleSheet(
+        "QTableWidget { background-color: #FFFFFF; color: #212121; gridline-color: #E0E0E0; }"
+      "QToolTip { color: #ffffff; background-color: #263238; border: 1px solid #BOBEC5; padding: 5px; font-size: 12px; font-weight: bold; border-radius: 4px; }"
+    );
+
+    m_permissionMatrixTable->horizontalHeader()->setStyleSheet(
+      "QHeaderView::section { background-color: #ECEFF1; color: #1A237E; font-weight: 900; padding: 6px; border: 1px solid #CFD8DC; }"
+    );
+
+    auto createVisibleItem = [](const QString& text, bool isHeader = false) {
+      auto* item = new QTableWidgetItem(text);
+      if (isHeader) {
+        item->setBackground(QBrush(QColor("#ECEFF1")));
+        item->setForeground(QBrush(QColor("#1A237E")));
+      } else {
+        item->setForeground(QBrush(QColor("#212121")));
+      }
+      item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+      return item;
+    };
+
+    QJsonObject root = response.object();
+    QJsonObject intentsObj = root["protected_intents"].toObject();
+
+    QStringList plugins = intentsObj.keys();
+
+    int currentRow = 0;
+
+    for (int i = 0; i < plugins.size(); ++i) {
+      QString pluginName = plugins[i];
+      m_permissionMatrixTable->insertRow(currentRow);
+      QString headerText = pluginName.toUpper();
+      m_permissionMatrixTable->setItem(currentRow, 0, createVisibleItem(headerText));
+      m_permissionMatrixTable->setSpan(currentRow, 0, 1, 5);
+
+      currentRow++;
+
+      QJsonArray intentsArr = intentsObj[pluginName].toArray();
+
+      for (const QJsonValue& val : intentsArr) {
+        QString intent = val.toString().toLower();
+        m_permissionMatrixTable->insertRow(currentRow);
+        auto* intentItem = createVisibleItem("   ↳ " + intent);
+        m_permissionMatrixTable->setItem(currentRow, 0, intentItem);
+
+        for (int col = 1; col <= 4; ++col) {
+          auto* container = new QWidget(m_permissionMatrixTable);
+          auto* layout = new QHBoxLayout(container);
+          auto* cb = new QCheckBox(container);
+
+          cb->setToolTip(pluginName + "." + intent);
+
+          cb->setStyleSheet("QCheckBox { background: transparent; }"
+                          "QCheckBox::indicator { width: 12px; height: 12px; border: 2px solid #90A4AE; border-radius: 3px; background: white; }"
+                          "QCheckBox::indicator:hover { border: 2px solid #1565C0; }"
+                          "QCheckBox::indicator:checked { background-color: #1565C0; border: 2px solid #1565C0; }"
+                          "QCheckBox::disabled {background-color: #f5f5f5; border: 2px solid #CFD8DC; }");
+
+
+          cb->setProperty("plugin_name", pluginName);
+          cb->setProperty("permission_name", intent);
+          cb->setEnabled(true);
+
+          layout->addWidget(cb);
+          layout->setAlignment(Qt::AlignCenter);
+          layout->setContentsMargins(0, 0, 0, 0);
+          container->setLayout(layout);
+
+          m_permissionMatrixTable->setCellWidget(currentRow, col, container);
+        }
+        currentRow++;
+      }
+    }
+
+    if (m_core) m_core->log("[StaffManager] permission matrix ui built.");
+  });
 }

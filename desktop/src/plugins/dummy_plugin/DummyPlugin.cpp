@@ -3,8 +3,6 @@
 #include <QVBoxLayout>
 #include <QDebug>
 
-PROTECTED_INTENT(dummy, delete)
-PROTECTED_INTENT(dummy, save)
 
 DummyPlugin::DummyPlugin(QObject* parent)
   : DBaseModule(":/dummy_plugin/manifest.json", parent) {}
@@ -17,6 +15,9 @@ DummyPlugin::~DummyPlugin() {
 
 void DummyPlugin::onInitialize() {
   if (m_core) m_core->log("Dummy plugin initialized");
+  PROTECTED_INTENT(dummy, save)
+  PROTECTED_INTENT(dummy, delete)
+  PROTECTED_INTENT(dummy, print)
 }
 
 void DummyPlugin::onShutdown() {

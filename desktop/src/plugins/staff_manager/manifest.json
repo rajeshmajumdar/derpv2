@@ -18,6 +18,8 @@
     "f2": "staff.create",
     "f5": "focusSearchLineIntent",
     "f10": "commitPermissionsMatrixIntent",
+    "j": "staff.nav_down",
+    "k": "staff.nav_up",
     "delete": "revokeAccessActionIntent"
   }
 }

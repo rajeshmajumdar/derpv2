@@ -46,11 +46,11 @@ class DBaseModule : public QObject, public DModule {
       return !m_publicChordsMap.isEmpty();
     }
 
-    static void registeredProtectedIntent(const QString& intentName) {
+    void registerProtectedIntent(const QString& intentName) {
       s_protectedIntents.insert(intentName);
     }
 
-    static QSet<QString> getProtectedIntents() {
+     QSet<QString> getProtectedIntents() {
       return s_protectedIntents;
     }
 
@@ -63,7 +63,7 @@ class DBaseModule : public QObject, public DModule {
     QHash<QString, QString> m_privateBindingsMap;
     QHash<QString, QString> m_publicChordsMap;
 
-    inline static QSet<QString> s_protectedIntents;
+    QSet<QString> s_protectedIntents;
 
   private:
     void loadManifestBindings() {
@@ -104,12 +104,6 @@ class DBaseModule : public QObject, public DModule {
 };
 
 #define PROTECTED_INTENT(plugin, action) \
-  namespace { \
-    struct IntentRegistrar_##plugin##_##action { \
-      IntentRegistrar_##plugin##_##action() { \
-        DBaseModule::registeredProtectedIntent(#plugin "." #action);\
-      } \
-    } registrar_##plugin##_##action; \
-  }
+  this->registerProtectedIntent(#plugin "." #action);
 
 #endif // !DBASEMODULE_H
