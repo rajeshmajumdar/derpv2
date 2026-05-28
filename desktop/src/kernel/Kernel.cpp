@@ -105,18 +105,14 @@ void Kernel::switchToModule(const QString &moduleId) {
 
 void Kernel::launchIntent(const QString &moduleId, const QString &method, const QVariantMap &data) {
   if (!m_pluginManager) return;
-  QString targetIntent = moduleId + "." + method;
 
-  if (m_activeStaffId != "admin") {
-    if (!m_activePermissionsCache.contains(targetIntent)) {
-      log("[Kernel] Unauthorized execution attempt blocked: User [" + m_activeStaffId + "] tried to launch [" + targetIntent + "]");
-      return;
+  QString targetIntent = moduleId + "." + method;
+  if (hasPermission(targetIntent)) {
+    ModuleRecord* rec = m_pluginManager->getModule(moduleId);
+    if (rec) {
+      log("[Kernel] Intent cleared for dispatch: " + targetIntent);
+      rec->instance->executeIntent(method, data);
     }
-  }
-  ModuleRecord* rec = m_pluginManager->getModule(moduleId);
-  if (rec) {
-    log("[Kernel] Intent cleared for dispatch: " + targetIntent);
-    rec->instance->executeIntent(method, data);
   }
 }
 
@@ -456,4 +452,12 @@ void Kernel::cacheActiveUserPermissions() {
 
     log("[Kernel] Local gaurd cache armed. Target operations compiled: " + QString::number(m_activePermissionsCache.size()));
   });
+}
+
+
+bool Kernel::hasPermission(const QString& targetIntent) {
+  if (m_activeStaffId == "1") {
+    return true;
+  }
+  return m_activePermissionsCache.contains(targetIntent);
 }

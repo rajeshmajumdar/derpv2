@@ -54,7 +54,7 @@ QWidget* DashboardPlugin::createView(QWidget* parent) {
   return m_widget;
 }
 
-void DashboardPlugin::executeIntent(const QString& intent, const QVariantMap& data) {
+void DashboardPlugin::handleIntent(const QString& intent, const QVariantMap& data) {
   Q_UNUSED(data);
   if (intent == "open_ad_link" && !m_adList.isEmpty() && m_currentAdIndex < m_adList.size()) {
     QString link = m_adList[m_currentAdIndex].second;

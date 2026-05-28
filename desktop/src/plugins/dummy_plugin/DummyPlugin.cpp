@@ -47,37 +47,37 @@ QWidget* DummyPlugin::createView(QWidget* parent) {
 
     auto* btnNew = new QPushButton("New (n)", m_widget);
     connect(btnNew, &QPushButton::clicked, [this]() {
-      executeIntent("dummy.new", QVariantMap());
+      this->executeIntent("dummy.new", QVariantMap());
     });
     layout->addWidget(btnNew);
 
     auto* btnSave = new QPushButton("Save (s)", m_widget);
     connect(btnSave, &QPushButton::clicked, [this]() {
-      executeIntent("dummy.save", QVariantMap());
+      this->executeIntent("dummy.save", QVariantMap());
     });
     layout->addWidget(btnSave);
 
     auto* btnPrint = new QPushButton("Print (p)", m_widget);
     connect(btnPrint, &QPushButton::clicked, [this]() {
-      executeIntent("dummy.print", QVariantMap());
+      this->executeIntent("dummy.print", QVariantMap());
     });
     layout->addWidget(btnPrint);
 
     auto* btnDelete = new QPushButton("Delete (d)", m_widget);
     connect(btnDelete, &QPushButton::clicked, [this]() {
-      executeIntent("dummy.delete", QVariantMap());
+      this->executeIntent("dummy.delete", QVariantMap());
     });
     layout->addWidget(btnDelete);
 
     auto* btnSearch = new QPushButton("Search (f)", m_widget);
     connect(btnSearch, &QPushButton::clicked, [this]() {
-      executeIntent("dummy.search", QVariantMap());
+      this->executeIntent("dummy.search", QVariantMap());
     });
     layout->addWidget(btnSearch);
 
     auto* btnClose = new QPushButton("Close (c)", m_widget);
     connect(btnClose, &QPushButton::clicked, [this]() {
-      executeIntent("dummy.close", QVariantMap());
+      this->executeIntent("dummy.close", QVariantMap());
     });
     layout->addWidget(btnClose);
 
@@ -115,8 +115,8 @@ QWidget* DummyPlugin::createView(QWidget* parent) {
   return m_widget;
 }
 
-void DummyPlugin::executeIntent(const QString& intent, const QVariantMap& data) {
-  if (m_core) m_core->log("Dummy executeIntent: " + intent);
+void DummyPlugin::handleIntent(const QString& intent, const QVariantMap& data) {
+  if (m_core) m_core->log("Dummy handleIntent: " + intent);
   if (m_statusLabel) {
     m_statusLabel->setText("Status: Intent [" + intent + "] fired");
   }

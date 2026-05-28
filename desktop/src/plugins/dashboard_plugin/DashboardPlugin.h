@@ -45,10 +45,12 @@ class DashboardPlugin : public DBaseModule {
     explicit DashboardPlugin(QObject* parent = nullptr);
     ~DashboardPlugin();
 
+    DCore* getCore() const override { return m_core; }
+
     void onInitialize() override;
     void onShutdown() override;
     QWidget* createView(QWidget* parent = nullptr) override;
-    void executeIntent(const QString& intent, const QVariantMap& data) override;
+    void handleIntent(const QString& intent, const QVariantMap& data) override;
     void onMessage(const QString& topic, const QVariantMap& data) override;
     QVariant onServiceRequest(const QString& method, const QVariantMap& params) override;
 

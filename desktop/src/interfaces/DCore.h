@@ -34,6 +34,8 @@ class DCore {
     virtual void httpDownload(const QString& url, const QString& destPath, std::function<void(bool)> callback) = 0;
 
     virtual void log(const QString &msg) = 0;
+
+    virtual bool hasPermission(const QString& targetIntent) = 0;
 };
 
 #endif

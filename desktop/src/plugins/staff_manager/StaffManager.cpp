@@ -243,7 +243,7 @@ QWidget* StaffManager::createView(QWidget* parent) {
 }
 
 
-void StaffManager::executeIntent(const QString& intent, const QVariantMap& data) {
+void StaffManager::handleIntent(const QString& intent, const QVariantMap& data) {
   if (m_core) m_core->log("[StaffManager] executeIntent: " + intent);
 
   // staff.create intent

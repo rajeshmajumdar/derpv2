@@ -45,6 +45,8 @@ class Kernel : public QMainWindow, public DCore {
 
     QStackedWidget* moduleStack() const;
 
+    bool hasPermission(const QString& targetIntent) override;
+
   private slots:
     // Catches the global 403 forbidden signal from NetworkManager
     void handleAccessDenied();
