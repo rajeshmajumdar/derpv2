@@ -13,6 +13,10 @@ type PermissionToggleRequest struct {
 	Allowed			bool		`json:"allowed"`
 }
 
+type BulkPermissionRequest struct {
+	Updates []PermissionToggleRequest `json:"updates"`
+}
+
 func PermissionHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -57,34 +61,37 @@ func getStaffPermissionsHandler(db *sql.DB, w http.ResponseWriter, r *http.Reque
 
 
 func togglePermissionHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	var req PermissionToggleRequest
+	var req BulkPermissionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error": "Invalid payload"}`, http.StatusBadRequest)
 		return
 	}
 
-	if req.StaffID == "admin" && !req.Allowed {
-		http.Error(w, `{"error": "Cannot revoke admin permissions"}`, http.StatusForbidden)
-		return
-	}
-
-	var err error
-	if req.Allowed {
-		_, err = db.Exec(
-			"INSERT OR IGNORE INTO Staff_Permissions (staff_id, plugin_name, permission_name) VALUES (?, ?, ?)",
-			req.StaffID, req.Plugin, req.Permission,
-		)
-	} else {
-		_, err = db.Exec(
-			"DELETE FROM Staff_Permissions WHERE staff_id = ? AND plugin_name = ? AND permission_name = ?",
-			req.StaffID, req.Plugin, req.Permission,
-		)
-	}
-
+	tx, err := db.Begin()
 	if err != nil {
 		http.Error(w, `{"error": "Database error"}`, http.StatusInternalServerError)
 		return
 	}
+
+	insertStmt, _ := tx.Prepare("INSERT OR IGNORE INTO Staff_Permissions (staff_id, plugin_name, permission_name) VALUES (?, ?, ?)")
+	deleteStmt, _ := tx.Prepare("DELETE FROM Staff_Permissions WHERE staff_id = ? AND plugin_name = ? AND permission_name = ?")
+
+	defer insertStmt.Close()
+	defer deleteStmt.Close()
+
+	for _, update := range req.Updates {
+		if update.StaffID == "admin" && !update.Allowed {
+			continue
+		}
+
+		if update.Allowed {
+			insertStmt.Exec(update.StaffID, update.Plugin, update.Permission)
+		} else {
+			deleteStmt.Exec(update.StaffID, update.Plugin, update.Permission)
+		}
+	}
+
+	tx.Commit();
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})

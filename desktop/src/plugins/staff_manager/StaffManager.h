@@ -28,8 +28,6 @@ class StaffManager : public DBaseModule {
     void onMessage(const QString& topic, const QVariantMap& data) override;
     QVariant onServiceRequest(const QString& method, const QVariantMap& params) override;
 
-    void initializeMockData();
-
   private:
     QWidget* m_widget = nullptr;
     QLabel* m_statusLabel = nullptr;
@@ -44,6 +42,7 @@ class StaffManager : public DBaseModule {
 
     void fetchStaffList();
     void setupPermissionMatrixUI();
+    void commitPermissions();
 };
 
 #endif // !STAFFMANAGER_H
