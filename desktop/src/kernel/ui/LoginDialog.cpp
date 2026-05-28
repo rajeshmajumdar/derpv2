@@ -119,6 +119,8 @@ void LoginDialog::handleLogin() {
     QJsonObject obj = doc.object();
     if (obj.contains("token")) {
       m_network->setJwtToken(obj["token"].toString());
+      m_currentStaffId = obj["id"].toString();
+      m_currentStaffRole = obj["role"].toString();
       accept();
     } else {
       m_errorLabel->setStyleSheet("color: #f44336; font-size: 11px;");

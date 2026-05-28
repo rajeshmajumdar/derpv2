@@ -16,6 +16,9 @@ class LoginDialog : public QDialog {
     explicit LoginDialog(NetworkManager* nm, QWidget *parent = nullptr);
     void center();
 
+    QString getCurrentStaffId() { return m_currentStaffId; }
+    QString getCurrentStaffRole() { return m_currentStaffRole; }
+
   private slots:
     void handleLogin();
 
@@ -25,6 +28,8 @@ class LoginDialog : public QDialog {
     QLineEdit* m_password;
     QLabel* m_errorLabel;
     QPushButton* m_btnLogin;
+    QString m_currentStaffId;
+    QString m_currentStaffRole;
 
     void setupUi();
 };

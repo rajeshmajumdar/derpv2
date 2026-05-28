@@ -58,6 +58,11 @@ class Kernel : public QMainWindow, public DCore {
     QString m_appRole;
     QString m_apiBaseUrl;
     QString m_activeModuleId;
+    QString m_activeStaffId;
+    QString m_activeUserRole;
+    QSet<QString> m_activePermissionsCache;
+
+    void cacheActiveUserPermissions();
 
     void startAuthFlow();
     void initializeSystem();

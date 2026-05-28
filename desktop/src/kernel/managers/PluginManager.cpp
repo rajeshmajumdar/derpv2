@@ -31,6 +31,9 @@ void PluginManager::loadModules(const QString &pluginsPath, const QString &curre
 
     QString requiredRole = manifest["role"].toString().toLower();
 
+    qDebug() << "Required role: " << requiredRole;
+    qDebug() << "Current role: " << currentRole.toLower();
+
     if (!requiredRole.isEmpty() && requiredRole != currentRole.toLower()) {
       m_core->log("Skipping " + moduleId + ": Requires " + requiredRole + " role.");
       continue;

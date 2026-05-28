@@ -105,8 +105,17 @@ void Kernel::switchToModule(const QString &moduleId) {
 
 void Kernel::launchIntent(const QString &moduleId, const QString &method, const QVariantMap &data) {
   if (!m_pluginManager) return;
+  QString targetIntent = moduleId + "." + method;
+
+  if (m_activeStaffId != "admin") {
+    if (!m_activePermissionsCache.contains(targetIntent)) {
+      log("[Kernel] Unauthorized execution attempt blocked: User [" + m_activeStaffId + "] tried to launch [" + targetIntent + "]");
+      return;
+    }
+  }
   ModuleRecord* rec = m_pluginManager->getModule(moduleId);
   if (rec) {
+    log("[Kernel] Intent cleared for dispatch: " + targetIntent);
     rec->instance->executeIntent(method, data);
   }
 }
@@ -148,6 +157,9 @@ void Kernel::startAuthFlow() {
 
   if (login.exec() == QDialog::Accepted) {
     log("Auth successful");
+    m_activeStaffId = login.getCurrentStaffId();
+    m_activeUserRole = login.getCurrentStaffRole();
+    cacheActiveUserPermissions();
     initializeSystem();
   } else {
     qApp->quit();
@@ -160,13 +172,13 @@ void Kernel::initializeSystem() {
   connect(m_networkManager, &NetworkManager::accessDenied, this, &Kernel::handleAccessDenied);
 
   // Update connection status — by this point auth has succeeded
-  if (m_appRole == "master") {
+  if (m_appRole == "master" && m_activeUserRole.toLower() == "master") {
     m_uiManager->setConnectionStatus(true, "localhost");
   }
   // Staff connection status is already set in initStaffConnection()
 
   m_pluginManager = new PluginManager(this, this);
-  m_pluginManager->loadModules(QApplication::applicationDirPath() + "/plugins", m_appRole);
+  m_pluginManager->loadModules(QApplication::applicationDirPath() + "/plugins", m_activeUserRole);
 
   syncIntentsToDatabase();
 
@@ -406,8 +418,42 @@ void Kernel::handleLogout() {
 
   if (login.exec() == QDialog::Accepted) {
     log("Re-auth successful");
+    m_activeStaffId = login.getCurrentStaffId();
+    m_activeUserRole = login.getCurrentStaffRole();
+    cacheActiveUserPermissions();
     initializeSystem();
   } else {
     qApp->quit();
   }
+}
+
+
+void Kernel::cacheActiveUserPermissions() {
+  m_activePermissionsCache.clear();
+
+  if (m_activeStaffId == "1") {
+    log("[Kernel] Admin session detected. Bypassing cache.");
+    return;
+  }
+
+  m_networkManager->GET("/api/v1/user/permissions", QVariantMap(), true, [this](QJsonDocument response) {
+    if (response.isNull() || !response.isObject()) {
+      log("[Kernel] Failed to initialize permission cache for user: " + m_activeStaffId);
+      return;
+    }
+
+    QJsonObject root = response.object();
+    QJsonObject pluginsObj = root["permissions"].toObject();
+    
+    for (auto it = pluginsObj.begin(); it != pluginsObj.end(); ++it) {
+      QString pluginName = it.key();
+      QJsonArray intentsArr = it.value().toArray();
+
+      for (const QJsonValue& intent: intentsArr) {
+        m_activePermissionsCache.insert(pluginName + "." + intent.toString());
+      }
+    }
+
+    log("[Kernel] Local gaurd cache armed. Target operations compiled: " + QString::number(m_activePermissionsCache.size()));
+  });
 }

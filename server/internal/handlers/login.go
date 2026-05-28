@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+	"strconv"
 
 	"derp-server/internal/models"
 	"github.com/golang-jwt/jwt/v5"
@@ -26,9 +27,10 @@ func LoginHandler(db *sql.DB, jwtKey []byte) http.HandlerFunc {
 
 		var passHash string
 		var role string
+		var staffId int
 
-		query := "SELECT password_hash, role FROM users WHERE username = ?"
-		err := db.QueryRow(query, creds.Username).Scan(&passHash, &role)
+		query := "SELECT id, password_hash, role FROM users WHERE username = ?"
+		err := db.QueryRow(query, creds.Username).Scan(&staffId, &passHash, &role)
 
 		w.Header().Set("Content-Type", "application/json")
 		if err != nil || bcrypt.CompareHashAndPassword([]byte(passHash), []byte(creds.Password)) != nil {
@@ -55,6 +57,7 @@ func LoginHandler(db *sql.DB, jwtKey []byte) http.HandlerFunc {
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]string{
+			"id": strconv.Itoa(staffId),
 			"token": tokenString,
 			"role": role,
 			"user": creds.Username,
