@@ -25,7 +25,7 @@ func main() {
 	http.HandleFunc("/api/v1/login", handlers.LoginHandler(db, jwtKey))
 	http.HandleFunc("/api/v1/ping", handlers.PingHandler())
 	http.HandleFunc("/api/v1/admin/staff", handlers.StaffHandler(db))
-	http.HandleFunc("/api/v1/admin/permissions", handlers.PermissionHandler(db))
+	http.HandleFunc("/api/v1/admin/permissions/", handlers.PermissionHandler(db))
 	http.HandleFunc("/api/v1/user/permissions", handlers.GetPermissionsHandler(db, jwtKey))
 	http.HandleFunc("/api/v1/system/intents", handlers.IntentsHandler(db))
 

@@ -237,6 +237,9 @@ void Kernel::initializeSystem() {
     }
   });
 
+  // Cache permissions
+  cacheActiveUserPermissions();
+
   qApp->installEventFilter(m_inputManager);
 }
 
@@ -440,7 +443,7 @@ void Kernel::cacheActiveUserPermissions() {
 
     QJsonObject root = response.object();
     QJsonObject pluginsObj = root["permissions"].toObject();
-    
+
     for (auto it = pluginsObj.begin(); it != pluginsObj.end(); ++it) {
       QString pluginName = it.key();
       QJsonArray intentsArr = it.value().toArray();
@@ -450,7 +453,6 @@ void Kernel::cacheActiveUserPermissions() {
       }
     }
 
-    log("[Kernel] Local gaurd cache armed. Target operations compiled: " + QString::number(m_activePermissionsCache.size()));
   });
 }
 

@@ -30,6 +30,9 @@ class StaffManager : public DBaseModule {
     void onMessage(const QString& topic, const QVariantMap& data) override;
     QVariant onServiceRequest(const QString& method, const QVariantMap& params) override;
 
+  private slots:
+    void loadPermissionsForSelectedStaff();
+
   private:
     QWidget* m_widget = nullptr;
     QLabel* m_statusLabel = nullptr;

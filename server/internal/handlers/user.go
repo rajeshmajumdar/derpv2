@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"fmt"
+
 	"derp-server/internal/models"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -34,7 +36,9 @@ func GetPermissionsHandler(db *sql.DB, jwtKey []byte) http.HandlerFunc {
 			return
 		}
 
-		staffID := claims.Username
+		staffID := claims.Subject
+
+		fmt.Println(staffID)
 
 		rows, err := db.Query("SELECT plugin_name, permission_name FROM Staff_Permissions WHERE staff_id = ?", staffID)
 		if err != nil {

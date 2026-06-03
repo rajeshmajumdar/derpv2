@@ -44,6 +44,7 @@ func LoginHandler(db *sql.DB, jwtKey []byte) http.HandlerFunc {
 			Username: creds.Username,
 			Role:			role,
 			RegisteredClaims: jwt.RegisteredClaims{
+				Subject:	 strconv.Itoa(staffId),
 				ExpiresAt: jwt.NewNumericDate(expirationTime),
 			},
 		}

@@ -176,6 +176,7 @@ QWidget* StaffManager::createView(QWidget* parent) {
     m_staffTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_staffTable->setSelectionMode(QAbstractItemView::SingleSelection);
     m_staffTable->setStyleSheet(tableStyle);
+    connect(m_staffTable, &QTableWidget::itemSelectionChanged, this, &StaffManager::loadPermissionsForSelectedStaff);
     leftLayout->addWidget(m_staffTable);
 
     // RIGHT PANE
@@ -384,7 +385,7 @@ void StaffManager::setupPermissionMatrixUI() {
 
     m_permissionMatrixTable->setStyleSheet(
         "QTableWidget { background-color: #FFFFFF; color: #212121; gridline-color: #E0E0E0; }"
-        "QToolTip { color: #ffffff; background-color: #263238; border: 1px solid #BOBEC5; padding: 5px; font-size: 12px; font-weight: bold; border-radius: 4px; }"
+        "QToolTip { color: #ffffff; background-color: #263238; border: 1px solid #B0BEC5; padding: 5px; font-size: 12px; font-weight: bold; border-radius: 4px; }"
     );
 
     m_permissionMatrixTable->horizontalHeader()->setStyleSheet(
@@ -459,6 +460,8 @@ void StaffManager::setupPermissionMatrixUI() {
     }
 
     if (m_core) m_core->log("[StaffManager] permission matrix ui built.");
+
+    loadPermissionsForSelectedStaff();
   });
 }
 
@@ -498,11 +501,59 @@ void StaffManager::commitPermissions() {
   QVariantMap payload;
   payload["updates"] = permissionsArray;
 
-  m_core->httpPost("/api/v1/admin/permissions", payload, true, [this](QJsonDocument response) {
+  m_core->httpPost("/api/v1/admin/permissions/", payload, true, [this](QJsonDocument response) {
     if (!response.isNull() && !response.isEmpty()) {
       if (m_core) m_core->log("[StaffManager] Permissions updated successfully.");
     } else {
       if (m_core) m_core->log("[StaffManager] Failed to update permissions.");
+    }
+  });
+}
+
+
+void StaffManager::loadPermissionsForSelectedStaff() {
+  if (!m_core) return;
+
+  int selectedRow = m_staffTable->currentRow();
+  if (selectedRow < 0) return;
+
+  QTableWidgetItem* idItem = m_staffTable->item(selectedRow, 0);
+  if (!idItem) return;
+
+  QString staffId = idItem->text().trimmed();
+
+  m_core->httpGet("/api/v1/admin/permissions/?staff_id=" + staffId, QVariantMap(), true, [this](QJsonDocument response) {
+    if (response.isNull() || !response.isObject()) {
+      if (m_core) m_core->log("[StaffManager] Failed to detch permissions from db.");
+      return;
+    }
+
+    QJsonObject allowedIntents = response.object();
+
+    for (int row = 0; row < m_permissionMatrixTable->rowCount(); ++row) {
+      QWidget* container = m_permissionMatrixTable->cellWidget(row, 2);
+      if (container) {
+        QCheckBox* cb = container->findChild<QCheckBox*>();
+        if (cb) {
+          QString pluginName = cb->property("plugin_name").toString();
+          QString actionName = cb->property("permission_name").toString();
+
+          bool isAllowed = false;
+
+          if (allowedIntents.contains(pluginName)) {
+            QJsonArray activeIntents = allowedIntents[pluginName].toArray();
+
+            for (const QJsonValue& val : activeIntents) {
+              if (val.toString() == actionName) {
+                isAllowed = true;
+                break;
+              }
+            }
+          }
+
+          cb->setChecked(isAllowed);
+        }
+      }
     }
   });
 }
