@@ -1,19 +1,19 @@
 #include "UIManager.h"
-#include <QVBoxLayout>
 #include <QPixmap>
 #include <QStyle>
+#include <QVBoxLayout>
+#include <qwidget.h>
 
-UIManager::UIManager(QMainWindow* window) : QObject(window), m_window(window) {}
-
+UIManager::UIManager(QMainWindow *window) : QObject(window), m_window(window) {}
 
 void UIManager::setupShell() {
   m_window->setMinimumSize(0, 0);
   m_window->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
 
-  QWidget* central = new QWidget(m_window);
+  QWidget *central = new QWidget(m_window);
   central->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-  QVBoxLayout* mainLayout = new QVBoxLayout(central);
+  QVBoxLayout *mainLayout = new QVBoxLayout(central);
   mainLayout->setContentsMargins(0, 0, 0, 0);
   mainLayout->setSpacing(0);
 
@@ -29,23 +29,23 @@ void UIManager::setupShell() {
 
   m_window->setCentralWidget(central);
 
-  // Create the command palette (parented to central widget so it overlays correctly)
+  // Create the command palette (parented to central widget so it overlays
+  // correctly)
   m_commandPalette = new CommandPalette(central);
-  connect(m_commandPalette, &CommandPalette::actionSelected,
-          this, &UIManager::paletteActionSelected);
+  connect(m_commandPalette, &CommandPalette::actionSelected, this,
+          &UIManager::paletteActionSelected);
 }
-
 
 void UIManager::createHeader() {
   m_header = new QFrame();
   m_header->setFixedHeight(40);
   m_header->setObjectName("headerFrame");
 
-  QHBoxLayout* layout = new QHBoxLayout(m_header);
+  QHBoxLayout *layout = new QHBoxLayout(m_header);
   layout->setContentsMargins(10, 0, 10, 0);
   layout->setSpacing(0);
 
-  QLabel* logo = new QLabel();
+  QLabel *logo = new QLabel();
   logo->setObjectName("logoLabel");
   QPixmap pixmap(":/src/resources/logo.svg");
 
@@ -63,13 +63,12 @@ void UIManager::createHeader() {
   layout->addStretch(1);
 }
 
-
 void UIManager::createFooter() {
   m_footer = new QFrame();
   m_footer->setFixedHeight(32);
   m_footer->setObjectName("footerFrame");
 
-  QHBoxLayout* layout = new QHBoxLayout(m_footer);
+  QHBoxLayout *layout = new QHBoxLayout(m_footer);
   layout->setContentsMargins(10, 0, 10, 0);
 
   // Connection status (left side)
@@ -90,15 +89,14 @@ void UIManager::createFooter() {
   layout->addWidget(m_bufferLabel);
 }
 
-
 // ─── Command palette delegation ──────────────────────────────
 
-void UIManager::showCommandPalette(const QHash<QString, KeyBindingTarget>& registry,
-                                    const QMap<QString, ModuleRecord*>& modules) {
+void UIManager::showCommandPalette(
+    const QHash<QString, KeyBindingTarget> &registry,
+    const QMap<QString, ModuleRecord *> &modules) {
   m_commandPalette->populate(registry, modules);
   m_commandPalette->show();
 }
-
 
 void UIManager::hideCommandPalette() {
   if (m_commandPalette) {
@@ -106,15 +104,13 @@ void UIManager::hideCommandPalette() {
   }
 }
 
-
 bool UIManager::isPaletteVisible() const {
   return m_commandPalette && m_commandPalette->isVisible();
 }
 
-
 // ─── Navigation bar ──────────────────────────────────────────
 
-void UIManager::createNavBar(const QMap<QString, ModuleRecord*>& modules) {
+void UIManager::createNavBar(const QMap<QString, ModuleRecord *> &modules) {
   for (auto it = m_navButtons.begin(); it != m_navButtons.end(); ++it) {
     m_navLayout->removeWidget(it.value());
     delete it.value();
@@ -122,15 +118,16 @@ void UIManager::createNavBar(const QMap<QString, ModuleRecord*>& modules) {
   m_navButtons.clear();
 
   for (auto it = modules.begin(); it != modules.end(); ++it) {
-    ModuleRecord* record = it.value();
+    ModuleRecord *record = it.value();
     QString name = record->manifest["name"].toString().toUpper();
     QString id = record->manifest["id"].toString();
     QString hotkey = record->manifest["hotkey"].toString().toLower();
 
     // Show hotkey hint in nav button text
-    QString label = hotkey.isEmpty() ? name : QString("%1 [%2]").arg(name, hotkey);
+    QString label =
+        hotkey.isEmpty() ? name : QString("%1 [%2]").arg(name, hotkey);
 
-    QPushButton* btn = new QPushButton(label);
+    QPushButton *btn = new QPushButton(label);
     btn->setObjectName("navButton");
     btn->setCursor(Qt::PointingHandCursor);
     btn->setProperty("active", false);
@@ -140,16 +137,15 @@ void UIManager::createNavBar(const QMap<QString, ModuleRecord*>& modules) {
     font.setUnderline(false);
     btn->setFont(font);
 
-    connect(btn, &QPushButton::clicked, [this, id]() {
-      emit navRequested(id);
-    });
+    connect(btn, &QPushButton::clicked,
+            [this, id]() { emit navRequested(id); });
 
     m_navLayout->addWidget(btn);
     m_navButtons[id] = btn;
   }
 }
 
-void UIManager::setActiveModule(const QString& moduleId) {
+void UIManager::setActiveModule(const QString &moduleId) {
   m_activeModuleId = moduleId;
 
   for (auto it = m_navButtons.begin(); it != m_navButtons.end(); ++it) {
@@ -165,9 +161,11 @@ void UIManager::setActiveModule(const QString& moduleId) {
   }
 }
 
-void UIManager::setConnectionStatus(bool online, const QString& serverName){
+void UIManager::setConnectionStatus(bool online, const QString &serverName) {
   if (online) {
-    m_statusLabel->setText(QString("● Connected: %1").arg(serverName.isEmpty() ? "Master" : serverName));
+    m_statusLabel->setText(
+        QString("● Connected: %1")
+            .arg(serverName.isEmpty() ? "Master" : serverName));
     m_statusLabel->setStyleSheet("color: #2e7d32; font-weight: bold;");
   } else {
     m_statusLabel->setText("● Disconnected");
@@ -175,14 +173,33 @@ void UIManager::setConnectionStatus(bool online, const QString& serverName){
   }
 }
 
-void UIManager::setModeIndicator(const QString& mode) {
+void UIManager::setModeIndicator(const QString &mode) {
   if (m_modeLabel) {
     m_modeLabel->setText(mode);
   }
 }
 
-void UIManager::setCommandBuffer(const QString& buffer) {
+void UIManager::setCommandBuffer(const QString &buffer) {
   if (m_bufferLabel) {
     m_bufferLabel->setText(buffer);
+  }
+}
+
+// -- Update plugin view
+void UIManager::updatePluginView(const QString &moduleId, QWidget *newView) {
+  if (!newView)
+    return;
+
+  if (m_moduleViews.contains(moduleId)) {
+    QWidget *oldView = m_moduleViews.value(moduleId);
+    m_moduleStack->removeWidget(oldView);
+    oldView->deleteLater();
+  }
+
+  m_moduleStack->addWidget(newView);
+  m_moduleViews[moduleId] = newView;
+
+  if (m_activeModuleId == moduleId) {
+    m_moduleStack->setCurrentWidget(newView);
   }
 }

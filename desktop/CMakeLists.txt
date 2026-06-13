@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(dERP)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_PREFIX_PATH "C:/Qt/6.11.0/mingw_64")
 
 set (CMAKE_AUTOMOC on)
@@ -48,6 +50,7 @@ target_link_libraries(kernel PRIVATE Qt6::Widgets Qt6::Core Qt6::Gui Qt6::Networ
 
 target_include_directories(kernel PRIVATE
   src/interfaces
+  ${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL_DIR}
   ${KERNEL_DIR}
   ${KERNEL_DIR}/managers
   ${KERNEL_DIR}/ui
@@ -69,6 +72,7 @@ target_link_libraries(dummy_plugin PRIVATE Qt6::Widgets Qt6::Core)
 
 target_include_directories(dummy_plugin PRIVATE
   src/interfaces
+  ${CMAKE_CURRENT_SOURCE_DIR}/${DUMMY_PLUGIN_DIR}
 )
 
 
@@ -85,6 +89,7 @@ target_link_libraries(dashboard_plugin PRIVATE Qt6::Widgets Qt6::Core)
 
 target_include_directories(dashboard_plugin PRIVATE
   src/interfaces
+  ${CMAKE_CURRENT_SOURCE_DIR}/${DASHBOARD_PLUGIN_DIR}
 )
 
 
@@ -101,6 +106,7 @@ target_link_libraries(staff_manager PRIVATE Qt6::Widgets Qt6::Core)
 
 target_include_directories(staff_manager PRIVATE
   src/interfaces
+  ${CMAKE_CURRENT_SOURCE_DIR}/${STAFF_MANAGER_DIR}
 )
 
 # Deploy server.exe alongside kernel.exe

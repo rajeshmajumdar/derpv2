@@ -4,6 +4,7 @@
 #include <QString>
 #include <QVariantMap>
 #include <QWidget>
+#include <QMap>
 #include "DCore.h"
 
 class DModule {
@@ -37,6 +38,8 @@ class DModule {
     virtual bool hasPublicChord(const QString& chordSuffix) = 0;
     virtual QString getPublicIntent(const QString& chordSuffix) = 0;
     virtual bool hasPublicChordsConfigured() = 0;
+
+    virtual QMap<QString, QString> getIntentDescription() const = 0;
 
   protected:
     virtual void handleIntent(const QString& intent, const QVariantMap &data) = 0;

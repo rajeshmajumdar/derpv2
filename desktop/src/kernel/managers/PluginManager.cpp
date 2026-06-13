@@ -1,29 +1,37 @@
 #include "PluginManager.h"
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QDebug>
+#include <qpluginloader.h>
+#include <qsharedpointer.h>
 
-PluginManager::PluginManager(DCore* core, QObject *parent)
-  : QObject(parent), m_core(core), m_activeModuleId("") {}
+#define D_HOT_LOADER_IMPLEMENTATION
+#include "d_hot_loader.h"
 
+PluginManager::PluginManager(DCore *core, QObject *parent)
+    : QObject(parent), m_core(core), m_activeModuleId("") {}
 
-void PluginManager::loadModules(const QString &pluginsPath, const QString &currentRole) {
+void PluginManager::loadModules(const QString &pluginsPath,
+                                const QString &currentRole) {
   QDir dir(pluginsPath);
   if (!dir.exists()) {
-    if (m_core) m_core->log("Plugin directory not found: " + pluginsPath);
+    if (m_core)
+      m_core->log("Plugin directory not found: " + pluginsPath);
     return;
   }
 
   m_registry.clear();
   m_globalSwitchMap.clear();
 
-  for (const QString &subDir : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+  for (const QString &subDir :
+       dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
     QDir pluginDir(dir.absoluteFilePath(subDir));
     QFile manifestFile(pluginDir.filePath("manifest.json"));
 
-    if (!manifestFile.open(QIODevice::ReadOnly)) continue;
+    if (!manifestFile.open(QIODevice::ReadOnly))
+      continue;
 
     QJsonDocument doc = QJsonDocument::fromJson(manifestFile.readAll());
     QJsonObject manifest = doc.object();
@@ -35,11 +43,13 @@ void PluginManager::loadModules(const QString &pluginsPath, const QString &curre
     qDebug() << "Current role: " << currentRole.toLower();
 
     if (!requiredRole.isEmpty() && requiredRole != currentRole.toLower()) {
-      m_core->log("Skipping " + moduleId + ": Requires " + requiredRole + " role.");
+      m_core->log("Skipping " + moduleId + ": Requires " + requiredRole +
+                  " role.");
       continue;
     }
 
-    QStringList filters; filters << "*.dll" << "*.so";
+    QStringList filters;
+    filters << "*.dll" << "*.so";
     QStringList dllFiles = pluginDir.entryList(filters);
 
     if (dllFiles.isEmpty()) {
@@ -47,25 +57,55 @@ void PluginManager::loadModules(const QString &pluginsPath, const QString &curre
       continue;
     }
 
-    QPluginLoader* loader = new QPluginLoader(pluginDir.absoluteFilePath(dllFiles.first()));
-    QObject* pluginInstance = loader->instance();
+    QString originalDllPath = pluginDir.absoluteFilePath(dllFiles.first());
+    QString manifestFileName = manifestFile.fileName();
 
-    if (DModule* module = qobject_cast<DModule*>(pluginInstance)) {
-      ModuleRecord* record = new ModuleRecord();
-      record->instance = module;
-      record->loader = loader;
-      record->manifest = manifest;
-      record->view = nullptr; // TODO: To be populated when main ui wires views
+    DHotLoader *loader = new DHotLoader(this);
+    loader->onPluginReload = [this, moduleId,
+                              manifestFileName](QObject *newInstance) {
+      if (m_core)
+        m_core->log("[PluginManager] Hot-swapped plugin: " + moduleId);
 
-      m_registry[moduleId] = record;
+      if (DModule *newModule = qobject_cast<DModule *>(newInstance)) {
+        newInstance->setProperty("manifest_path", manifestFileName);
+        newModule->initialize(m_core);
 
-      pluginInstance->setProperty("manifest_path", manifestFile.fileName());
+        if (m_registry.contains(moduleId)) {
+          m_registry[moduleId]->instance = newModule;
+          m_registry[moduleId]->view = nullptr;
 
-      module->initialize(m_core);
+          emit pluginHotReloaded(moduleId);
+        }
+      }
+    };
 
-      m_core->log("Successfully loaded: " + moduleId);
+    loader->onPluginReloadFailed = [this, moduleId](QString err) {
+      if (m_core)
+        m_core->log("[PluginManager] Hot-reloading failed for " + moduleId);
+    };
+
+    if (loader->load(originalDllPath)) {
+      QObject *pluginInstance = loader->instance();
+      if (DModule *module = qobject_cast<DModule *>(pluginInstance)) {
+        ModuleRecord *record = new ModuleRecord();
+        record->instance = module;
+        record->loader = loader;
+        record->manifest = manifest;
+        record->view =
+            nullptr; // TODO: To be populated when main ui wires views
+
+        m_registry[moduleId] = record;
+
+        pluginInstance->setProperty("manifest_path", manifestFile.fileName());
+        module->initialize(m_core);
+
+        m_core->log("Successfully loaded: " + moduleId);
+      } else {
+        m_core->log("Failed to cast plugin: " + moduleId);
+        delete loader;
+      }
     } else {
-      m_core->log("Failed to cast plugin: " + loader->errorString());
+      m_core->log("Failed to load plugin DLL: " + moduleId);
       delete loader;
     }
   }
@@ -73,12 +113,12 @@ void PluginManager::loadModules(const QString &pluginsPath, const QString &curre
   buildRoutingTables();
 }
 
-ModuleRecord* PluginManager::getModule(const QString &id) {
+ModuleRecord *PluginManager::getModule(const QString &id) {
   return m_registry.value(id, nullptr);
 }
 
-DModule* PluginManager::getModuleInstance(const QString &id) {
-  ModuleRecord* rec = m_registry.value(id, nullptr);
+DModule *PluginManager::getModuleInstance(const QString &id) {
+  ModuleRecord *rec = m_registry.value(id, nullptr);
   return rec ? rec->instance : nullptr;
 }
 
@@ -91,15 +131,16 @@ void PluginManager::buildRoutingTables() {
   m_hotkeyRegistry.clear();
 
   for (auto it = m_registry.begin(); it != m_registry.end(); ++it) {
-    const QString& moduleId = it.key();
-    const QJsonObject& manifest = it.value()->manifest;
+    const QString &moduleId = it.key();
+    const QJsonObject &manifest = it.value()->manifest;
 
     QString globalSwitchKey = manifest["hotkey"].toString().toLower().trimmed();
 
     if (!globalSwitchKey.isEmpty()) {
       m_globalSwitchMap[globalSwitchKey] = moduleId;
       if (m_core) {
-        m_core->log(QString("[PluginManager] Key '%1' registered to module: %2").arg(globalSwitchKey, moduleId));
+        m_core->log(QString("[PluginManager] Key '%1' registered to module: %2")
+                        .arg(globalSwitchKey, moduleId));
       }
 
       // Register intents from manifest for the command palette

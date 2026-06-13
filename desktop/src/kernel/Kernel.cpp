@@ -1,11 +1,12 @@
 #include "Kernel.h"
 #include "../interfaces/DBaseModule.h"
 #include "LoginDialog.h"
+#include "SetupWizard.h"
 #include <QApplication>
 #include <QDir>
 #include <QFile>
-#include <QMessageBox>
 #include <QKeyEvent>
+#include <QMessageBox>
 
 Kernel::Kernel(QWidget *parent) : QMainWindow(parent) {
   m_uiManager = new UIManager(this);
@@ -17,15 +18,17 @@ Kernel::Kernel(QWidget *parent) : QMainWindow(parent) {
   QSettings settings("derp", "AppConfig");
   m_appRole = settings.value("role").toString();
 
-  connect(m_networkManager, &NetworkManager::accessDenied, this, &Kernel::handleAccessDenied);
+  connect(m_networkManager, &NetworkManager::accessDenied, this,
+          &Kernel::handleAccessDenied);
 
   connect(m_serverManager, &ServerManager::logReceived, this, &Kernel::log);
 
-  connect(m_serverManager, &ServerManager::serverFault, this, [this](QString error) {
-    log("[Kernel]PANIC: " + error);
-    QMessageBox::critical(this, "Server Error", error);
-    qApp->quit();
-  });
+  connect(m_serverManager, &ServerManager::serverFault, this,
+          [this](QString error) {
+            log("[Kernel]PANIC: " + error);
+            QMessageBox::critical(this, "Server Error", error);
+            qApp->quit();
+          });
 
   if (m_appRole.isEmpty()) {
     SetupWizard wizard(m_serverManager, this);
@@ -65,13 +68,13 @@ Kernel::Kernel(QWidget *parent) : QMainWindow(parent) {
 
 Kernel::~Kernel() {}
 
-void Kernel::log(const QString &msg) {
-  qDebug() << "[Kernel]:" << msg;
-}
+void Kernel::log(const QString &msg) { qDebug() << "[Kernel]:" << msg; }
 
-QVariant Kernel::callService(const QString &moduleId, const QString &method, const QVariantMap &params) {
-  if (!m_pluginManager) return QVariant();
-  ModuleRecord* rec = m_pluginManager->getModule(moduleId);
+QVariant Kernel::callService(const QString &moduleId, const QString &method,
+                             const QVariantMap &params) {
+  if (!m_pluginManager)
+    return QVariant();
+  ModuleRecord *rec = m_pluginManager->getModule(moduleId);
   if (rec) {
     return rec->instance->onServiceRequest(method, params);
   }
@@ -79,10 +82,11 @@ QVariant Kernel::callService(const QString &moduleId, const QString &method, con
 }
 
 void Kernel::publish(const QString &topic, const QVariantMap &data) {
-  if (!m_pluginManager) return;
-  const auto& modules = m_pluginManager->allModules();
+  if (!m_pluginManager)
+    return;
+  const auto &modules = m_pluginManager->allModules();
   for (auto it = modules.begin(); it != modules.end(); ++it) {
-    ModuleRecord* record = it.value();
+    ModuleRecord *record = it.value();
     QJsonArray listeners = record->manifest["listeners"].toArray();
     for (auto val : listeners) {
       if (val.toString() == topic) {
@@ -93,8 +97,9 @@ void Kernel::publish(const QString &topic, const QVariantMap &data) {
 }
 
 void Kernel::switchToModule(const QString &moduleId) {
-  if (!m_pluginManager) return;
-  ModuleRecord* rec = m_pluginManager->getModule(moduleId);
+  if (!m_pluginManager)
+    return;
+  ModuleRecord *rec = m_pluginManager->getModule(moduleId);
   if (rec && rec->view) {
     m_uiManager->moduleStack()->setCurrentWidget(rec->view);
     m_uiManager->setActiveModule(moduleId);
@@ -103,12 +108,14 @@ void Kernel::switchToModule(const QString &moduleId) {
   }
 }
 
-void Kernel::launchIntent(const QString &moduleId, const QString &method, const QVariantMap &data) {
-  if (!m_pluginManager) return;
+void Kernel::launchIntent(const QString &moduleId, const QString &method,
+                          const QVariantMap &data) {
+  if (!m_pluginManager)
+    return;
 
   QString targetIntent = moduleId + "." + method;
   if (hasPermission(targetIntent)) {
-    ModuleRecord* rec = m_pluginManager->getModule(moduleId);
+    ModuleRecord *rec = m_pluginManager->getModule(moduleId);
     if (rec) {
       log("[Kernel] Intent cleared for dispatch: " + targetIntent);
       rec->instance->executeIntent(method, data);
@@ -116,34 +123,42 @@ void Kernel::launchIntent(const QString &moduleId, const QString &method, const 
   }
 }
 
-void Kernel::pushNotification(const NotificationType &type, const QString &msg) {
+void Kernel::pushNotification(const NotificationType &type,
+                              const QString &msg) {
   log(QString("Notification (%1): %2").arg(static_cast<int>(type)).arg(msg));
 }
 
-void Kernel::httpGet(const QString& url, const QVariantMap& data, bool isAuthenticated, std::function<void(QJsonDocument)> callback) {
+void Kernel::httpGet(const QString &url, const QVariantMap &data,
+                     bool isAuthenticated,
+                     std::function<void(QJsonDocument)> callback) {
   m_networkManager->GET(url, data, isAuthenticated, callback);
 }
-void Kernel::httpPost(const QString& url, const QVariantMap& data, bool isAuthenticated, std::function<void(QJsonDocument)> callback) {
+void Kernel::httpPost(const QString &url, const QVariantMap &data,
+                      bool isAuthenticated,
+                      std::function<void(QJsonDocument)> callback) {
   m_networkManager->POST(url, data, isAuthenticated, callback);
 }
-void Kernel::httpPut(const QString& url, const QVariantMap& data, bool isAuthenticated, std::function<void(QJsonDocument)> callback) {
+void Kernel::httpPut(const QString &url, const QVariantMap &data,
+                     bool isAuthenticated,
+                     std::function<void(QJsonDocument)> callback) {
   m_networkManager->PUT(url, data, isAuthenticated, callback);
 }
-void Kernel::httpDownload(const QString& url, const QString& destPath, std::function<void(bool)> callback) {
+void Kernel::httpDownload(const QString &url, const QString &destPath,
+                          std::function<void(bool)> callback) {
   m_networkManager->startDownload(url, destPath, callback);
 }
 
-
 void Kernel::initStaffConnection() {
   log("Locating master server on the network...");
-  connect(m_networkManager, &NetworkManager::masterFound, this, [this](QString name, QString ip) {
-    m_uiManager->setConnectionStatus(true, name);
-    m_apiBaseUrl = QString("http://%1:5000").arg(ip);
-    m_networkManager->setApiBaseUrl(m_apiBaseUrl);
-    log(QString("Found master: %1 [%2]").arg(name, m_apiBaseUrl));
+  connect(m_networkManager, &NetworkManager::masterFound, this,
+          [this](QString name, QString ip) {
+            m_uiManager->setConnectionStatus(true, name);
+            m_apiBaseUrl = QString("http://%1:5000").arg(ip);
+            m_networkManager->setApiBaseUrl(m_apiBaseUrl);
+            log(QString("Found master: %1 [%2]").arg(name, m_apiBaseUrl));
 
-    startAuthFlow();
-  });
+            startAuthFlow();
+          });
   m_networkManager->startDiscovery();
 }
 
@@ -165,7 +180,8 @@ void Kernel::startAuthFlow() {
 void Kernel::initializeSystem() {
   this->setWindowState(Qt::WindowMaximized);
 
-  connect(m_networkManager, &NetworkManager::accessDenied, this, &Kernel::handleAccessDenied);
+  connect(m_networkManager, &NetworkManager::accessDenied, this,
+          &Kernel::handleAccessDenied);
 
   // Update connection status — by this point auth has succeeded
   if (m_appRole == "master" && m_activeUserRole.toLower() == "master") {
@@ -174,17 +190,35 @@ void Kernel::initializeSystem() {
   // Staff connection status is already set in initStaffConnection()
 
   m_pluginManager = new PluginManager(this, this);
-  m_pluginManager->loadModules(QApplication::applicationDirPath() + "/plugins", m_activeUserRole);
+  m_pluginManager->loadModules(QApplication::applicationDirPath() + "/plugins",
+                               m_activeUserRole);
+
+  connect(m_pluginManager, &PluginManager::pluginHotReloaded, this,
+          [this](const QString &moduleId) {
+            log("[Kernel] Hot-reload triggered for UI: " + moduleId);
+
+            DModule *newModule = m_pluginManager->getModuleInstance(moduleId);
+            ModuleRecord *record = m_pluginManager->getModule(moduleId);
+
+            if (newModule && record) {
+              if (record->manifest["hasUi"].toVariant().toBool()) {
+                QWidget *newView =
+                    newModule->createView(m_uiManager->moduleStack());
+                record->view = newView;
+                m_uiManager->updatePluginView(moduleId, newView);
+              }
+            }
+          });
 
   syncIntentsToDatabase();
 
-  const auto& modules = m_pluginManager->allModules();
+  const auto &modules = m_pluginManager->allModules();
   m_uiManager->createNavBar(modules);
 
   connect(m_uiManager, &UIManager::navRequested, this, &Kernel::switchToModule);
 
   for (auto it = modules.begin(); it != modules.end(); ++it) {
-    ModuleRecord* record = it.value();
+    ModuleRecord *record = it.value();
     if (record->manifest["hasUi"].toVariant().toBool()) {
       record->view = record->instance->createView(m_uiManager->moduleStack());
       if (record->view) {
@@ -200,49 +234,53 @@ void Kernel::initializeSystem() {
   // Set up the neovim-style input manager
   m_inputManager = new InputManager(m_pluginManager, this);
 
-  connect(m_inputManager, &InputManager::moduleSwitchRequested,
-          this, &Kernel::switchToModule);
+  connect(m_inputManager, &InputManager::moduleSwitchRequested, this,
+          &Kernel::switchToModule);
 
-  connect(m_inputManager, &InputManager::logRequired,
-          this, &Kernel::log);
+  connect(m_inputManager, &InputManager::logRequired, this, &Kernel::log);
 
-  connect(m_inputManager, &InputManager::modeChanged,
-          this, [this](InputManager::Mode mode) {
-    QString modeText = (mode == InputManager::Mode::NORMAL)
-      ? "-- NORMAL --"
-      : "-- INSERT --";
-    m_uiManager->setModeIndicator(modeText);
-  });
+  connect(m_inputManager, &InputManager::modeChanged, this,
+          [this](InputManager::Mode mode) {
+            QString modeText = (mode == InputManager::Mode::NORMAL)
+                                   ? "-- NORMAL --"
+                                   : "-- INSERT --";
+            m_uiManager->setModeIndicator(modeText);
+          });
 
-  connect(m_inputManager, &InputManager::bufferChanged,
-          this, [this](const QString& buffer) {
-    m_uiManager->setCommandBuffer(buffer);
-  });
+  connect(
+      m_inputManager, &InputManager::bufferChanged, this,
+      [this](const QString &buffer) { m_uiManager->setCommandBuffer(buffer); });
 
   // Wire up global hotkey signals
-  connect(m_inputManager, &InputManager::navigatePrevModule, this, &Kernel::handleNavigatePrevModule);
-  connect(m_inputManager, &InputManager::navigateNextModule, this, &Kernel::handleNavigateNextModule);
-  connect(m_inputManager, &InputManager::navigateUp,         this, &Kernel::handleNavigateUp);
-  connect(m_inputManager, &InputManager::navigateDown,       this, &Kernel::handleNavigateDown);
-  connect(m_inputManager, &InputManager::deleteRequested,    this, &Kernel::handleDelete);
-  connect(m_inputManager, &InputManager::searchRequested,    this, &Kernel::handleSearch);
-  connect(m_inputManager, &InputManager::logoutRequested,    this, &Kernel::handleLogout);
+  connect(m_inputManager, &InputManager::navigatePrevModule, this,
+          &Kernel::handleNavigatePrevModule);
+  connect(m_inputManager, &InputManager::navigateNextModule, this,
+          &Kernel::handleNavigateNextModule);
+  connect(m_inputManager, &InputManager::navigateUp, this,
+          &Kernel::handleNavigateUp);
+  connect(m_inputManager, &InputManager::navigateDown, this,
+          &Kernel::handleNavigateDown);
+  connect(m_inputManager, &InputManager::deleteRequested, this,
+          &Kernel::handleDelete);
+  connect(m_inputManager, &InputManager::searchRequested, this,
+          &Kernel::handleSearch);
+  connect(m_inputManager, &InputManager::logoutRequested, this,
+          &Kernel::handleLogout);
 
   // Wire up command palette selection
-  connect(m_uiManager, &UIManager::paletteActionSelected,
-          this, [this](const QString& moduleId, const QString& intentName) {
-    switchToModule(moduleId);
-    if (!intentName.isEmpty()) {
-      launchIntent(moduleId, intentName, QVariantMap());
-    }
-  });
+  connect(m_uiManager, &UIManager::paletteActionSelected, this,
+          [this](const QString &moduleId, const QString &intentName) {
+            switchToModule(moduleId);
+            if (!intentName.isEmpty()) {
+              launchIntent(moduleId, intentName, QVariantMap());
+            }
+          });
 
   // Cache permissions
   cacheActiveUserPermissions();
 
   qApp->installEventFilter(m_inputManager);
 }
-
 
 void Kernel::teardownSystem() {
   if (m_inputManager) {
@@ -253,7 +291,7 @@ void Kernel::teardownSystem() {
 
   // Clear all module views from the stack
   if (m_pluginManager) {
-    const auto& modules = m_pluginManager->allModules();
+    const auto &modules = m_pluginManager->allModules();
     for (auto it = modules.begin(); it != modules.end(); ++it) {
       if (it.value()->instance) {
         it.value()->instance->onShutdown();
@@ -271,21 +309,19 @@ void Kernel::teardownSystem() {
   m_uiManager->setConnectionStatus(false);
 }
 
-
 void Kernel::handleAccessDenied() {
-  //pushNotification(NotificationType::Error, "Insufficient Permission");
+  // pushNotification(NotificationType::Error, "Insufficient Permission");
   log("[Kernel] Insufficient permission");
 }
 
-
 void Kernel::syncIntentsToDatabase() {
   QSet<QString> protectedIntents;
-  const QMap<QString, ModuleRecord*>& registry = m_pluginManager->allModules();
+  const QMap<QString, ModuleRecord *> &registry = m_pluginManager->allModules();
 
   for (auto it = registry.begin(); it != registry.end(); ++it) {
     QString moduleId = it.key();
-    DModule* genericModule = m_pluginManager->getModuleInstance(moduleId);
-    DBaseModule* plugin = dynamic_cast<DBaseModule*>(genericModule);
+    DModule *genericModule = m_pluginManager->getModuleInstance(moduleId);
+    DBaseModule *plugin = dynamic_cast<DBaseModule *>(genericModule);
 
     if (plugin) {
       protectedIntents.unite(plugin->getProtectedIntents());
@@ -294,7 +330,7 @@ void Kernel::syncIntentsToDatabase() {
 
   QVariantMap groupedIntents;
 
-  for (const QString& intentString : protectedIntents) {
+  for (const QString &intentString : protectedIntents) {
     QStringList parts = intentString.split(".");
     // Since we are following "plugin.permissionname"
     if (parts.length() == 2) {
@@ -309,32 +345,37 @@ void Kernel::syncIntentsToDatabase() {
 
       groupedIntents[pluginName] = permList;
     } else {
-      log("[Kernel] Protected intent ignored. Does not match 'plugin.permission' convention");
+      log("[Kernel] Protected intent ignored. Does not match "
+          "'plugin.permission' convention");
     }
   }
 
   QVariantMap finalPayload;
   finalPayload["protected_intents"] = groupedIntents;
 
-  log("Syncing " + QString::number(protectedIntents.size()) + " protected intents to the db...");
+  log("Syncing " + QString::number(protectedIntents.size()) +
+      " protected intents to the db...");
 
-  m_networkManager->POST("/api/v1/system/intents", finalPayload, true, [this](QJsonDocument response) {
-    if (!response.isNull() && !response.isEmpty()) {
-      log("[Kernel] Synced protected intents with the db.");
-    } else {
-      log("[Kernel] Failed to sync protected intents.");
-    }
-  });
+  m_networkManager->POST(
+      "/api/v1/system/intents", finalPayload, true,
+      [this](QJsonDocument response) {
+        if (!response.isNull() && !response.isEmpty()) {
+          log("[Kernel] Synced protected intents with the db.");
+        } else {
+          log("[Kernel] Failed to sync protected intents.");
+        }
+      });
 }
-
 
 // ─── Global hotkey handlers ────────────────────────────────
 
 void Kernel::handleNavigatePrevModule() {
-  if (!m_pluginManager) return;
-  const auto& modules = m_pluginManager->allModules();
+  if (!m_pluginManager)
+    return;
+  const auto &modules = m_pluginManager->allModules();
   QStringList keys = modules.keys();
-  if (keys.isEmpty()) return;
+  if (keys.isEmpty())
+    return;
 
   int idx = keys.indexOf(m_activeModuleId);
   int prev = (idx <= 0) ? keys.size() - 1 : idx - 1;
@@ -342,10 +383,12 @@ void Kernel::handleNavigatePrevModule() {
 }
 
 void Kernel::handleNavigateNextModule() {
-  if (!m_pluginManager) return;
-  const auto& modules = m_pluginManager->allModules();
+  if (!m_pluginManager)
+    return;
+  const auto &modules = m_pluginManager->allModules();
   QStringList keys = modules.keys();
-  if (keys.isEmpty()) return;
+  if (keys.isEmpty())
+    return;
 
   int idx = keys.indexOf(m_activeModuleId);
   int next = (idx < 0 || idx >= keys.size() - 1) ? 0 : idx + 1;
@@ -354,8 +397,9 @@ void Kernel::handleNavigateNextModule() {
 
 void Kernel::handleNavigateUp() {
   // Send synthetic Up arrow key to the current module's view
-  if (!m_pluginManager || m_activeModuleId.isEmpty()) return;
-  ModuleRecord* rec = m_pluginManager->getModule(m_activeModuleId);
+  if (!m_pluginManager || m_activeModuleId.isEmpty())
+    return;
+  ModuleRecord *rec = m_pluginManager->getModule(m_activeModuleId);
   if (rec && rec->view) {
     QKeyEvent upPress(QEvent::KeyPress, Qt::Key_Up, Qt::NoModifier);
     QKeyEvent upRelease(QEvent::KeyRelease, Qt::Key_Up, Qt::NoModifier);
@@ -366,8 +410,9 @@ void Kernel::handleNavigateUp() {
 
 void Kernel::handleNavigateDown() {
   // Send synthetic Down arrow key to the current module's view
-  if (!m_pluginManager || m_activeModuleId.isEmpty()) return;
-  ModuleRecord* rec = m_pluginManager->getModule(m_activeModuleId);
+  if (!m_pluginManager || m_activeModuleId.isEmpty())
+    return;
+  ModuleRecord *rec = m_pluginManager->getModule(m_activeModuleId);
   if (rec && rec->view) {
     QKeyEvent downPress(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier);
     QKeyEvent downRelease(QEvent::KeyRelease, Qt::Key_Down, Qt::NoModifier);
@@ -378,8 +423,9 @@ void Kernel::handleNavigateDown() {
 
 void Kernel::handleDelete() {
   // Execute the "delete" intent on the active module (convention-based)
-  if (!m_pluginManager || m_activeModuleId.isEmpty()) return;
-  ModuleRecord* rec = m_pluginManager->getModule(m_activeModuleId);
+  if (!m_pluginManager || m_activeModuleId.isEmpty())
+    return;
+  ModuleRecord *rec = m_pluginManager->getModule(m_activeModuleId);
   if (rec) {
     // Look for a "d" intent key in the manifest (convention: d = delete)
     QJsonObject intents = rec->manifest["intents"].toObject();
@@ -394,15 +440,14 @@ void Kernel::handleDelete() {
 }
 
 void Kernel::handleSearch() {
-  if (!m_pluginManager) return;
+  if (!m_pluginManager)
+    return;
 
   if (m_uiManager->isPaletteVisible()) {
     m_uiManager->hideCommandPalette();
   } else {
-    m_uiManager->showCommandPalette(
-      m_pluginManager->hotkeyRegistry(),
-      m_pluginManager->allModules()
-    );
+    m_uiManager->showCommandPalette(m_pluginManager->hotkeyRegistry(),
+                                    m_pluginManager->allModules());
   }
 }
 
@@ -426,7 +471,6 @@ void Kernel::handleLogout() {
   }
 }
 
-
 void Kernel::cacheActiveUserPermissions() {
   m_activePermissionsCache.clear();
 
@@ -435,29 +479,31 @@ void Kernel::cacheActiveUserPermissions() {
     return;
   }
 
-  m_networkManager->GET("/api/v1/user/permissions", QVariantMap(), true, [this](QJsonDocument response) {
-    if (response.isNull() || !response.isObject()) {
-      log("[Kernel] Failed to initialize permission cache for user: " + m_activeStaffId);
-      return;
-    }
+  m_networkManager->GET(
+      "/api/v1/user/permissions", QVariantMap(), true,
+      [this](QJsonDocument response) {
+        if (response.isNull() || !response.isObject()) {
+          log("[Kernel] Failed to initialize permission cache for user: " +
+              m_activeStaffId);
+          return;
+        }
 
-    QJsonObject root = response.object();
-    QJsonObject pluginsObj = root["permissions"].toObject();
+        QJsonObject root = response.object();
+        QJsonObject pluginsObj = root["permissions"].toObject();
 
-    for (auto it = pluginsObj.begin(); it != pluginsObj.end(); ++it) {
-      QString pluginName = it.key();
-      QJsonArray intentsArr = it.value().toArray();
+        for (auto it = pluginsObj.begin(); it != pluginsObj.end(); ++it) {
+          QString pluginName = it.key();
+          QJsonArray intentsArr = it.value().toArray();
 
-      for (const QJsonValue& intent: intentsArr) {
-        m_activePermissionsCache.insert(pluginName + "." + intent.toString());
-      }
-    }
-
-  });
+          for (const QJsonValue &intent : intentsArr) {
+            m_activePermissionsCache.insert(pluginName + "." +
+                                            intent.toString());
+          }
+        }
+      });
 }
 
-
-bool Kernel::hasPermission(const QString& targetIntent) {
+bool Kernel::hasPermission(const QString &targetIntent) {
   if (m_activeStaffId == "1") {
     return true;
   }

@@ -16,5 +16,10 @@
   "private": {
     "f2": "dummy.print"
   },
-  "listeners": ["dummy.test_topic"]
+  "listeners": ["dummy.test_topic"],
+  "permissions": {
+    "save": "Allows the user to safely commit dummy records to the db.",
+    "delete": "Permits deletion of dummy records.",
+    "print": "Grants access to generate and export dummy pdf reports."
+  }
 }
