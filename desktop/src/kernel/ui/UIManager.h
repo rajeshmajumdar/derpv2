@@ -28,7 +28,8 @@ public:
 
   void setStatusMessage(const QString &msg);
 
-  void createNavBar(const QMap<QString, ModuleRecord *> &modules);
+  void createNavBar(const QList<QString> &sortedIds,
+                    const QMap<QString, ModuleRecord *> &modules);
   void setActiveModule(const QString &moduleId);
   QString activeModuleId() const { return m_activeModuleId; }
 

@@ -3,6 +3,7 @@
   "name": "Dashboard",
   "hasUi": true,
   "hotkey": "g",
+  "order": 1,
   "intents": {
     "n": "dashboard.new",
     "s": "dashboard.save"

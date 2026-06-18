@@ -47,6 +47,8 @@ public:
     return m_hotkeyRegistry;
   }
 
+  const QList<QString> &sortedModules() const { return m_sortedModuleIds; }
+
 signals:
   void pluginHotReloaded(const QString &moduleId);
 
@@ -58,6 +60,7 @@ private:
   QMap<QString, ModuleRecord *> m_registry;
   QHash<QString, QString> m_globalSwitchMap;
   QHash<QString, KeyBindingTarget> m_hotkeyRegistry;
+  QList<QString> m_sortedModuleIds;
 };
 
 #endif // PLUGINMANAGER_H

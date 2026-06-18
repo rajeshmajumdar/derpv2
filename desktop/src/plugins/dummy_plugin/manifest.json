@@ -3,6 +3,7 @@
   "name": "Dummy Plugin",
   "hasUi": true,
   "hotkey": "d",
+  "order": 4,
   "chord": {
     "n": {
       "intent": "dummy.new",

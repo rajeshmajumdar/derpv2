@@ -109,6 +109,23 @@ target_include_directories(staff_manager PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/${STAFF_MANAGER_DIR}
 )
 
+
+
+set(LEDGER_PLUGIN_DIR src/plugins/ledger_plugin)
+
+add_library(ledger_plugin MODULE
+  ${LEDGER_PLUGIN_DIR}/LedgerPlugin.h
+  ${LEDGER_PLUGIN_DIR}/LedgerPlugin.cpp
+  src/interfaces/DBaseModule.h
+)
+
+target_link_libraries(ledger_plugin PRIVATE Qt6::Widgets Qt6::Core)
+
+target_include_directories(ledger_plugin PRIVATE
+  src/interfaces
+  ${CMAKE_CURRENT_SOURCE_DIR}/${LEDGER_PLUGIN_DIR}
+)
+
 # Deploy server.exe alongside kernel.exe
 add_custom_command(TARGET kernel POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -145,3 +162,41 @@ add_custom_command(TARGET staff_manager POST_BUILD
     "${CMAKE_SOURCE_DIR}/${STAFF_MANAGER_DIR}/manifest.json"
     "${CMAKE_BINARY_DIR}/plugins/com.derp.staff_manager/manifest.json"
 )
+
+set_target_properties(ledger_plugin PROPERTIES
+  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins/com.derp.ledger"
+)
+add_custom_command(TARGET ledger_plugin POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+  "${CMAKE_SOURCE_DIR}/${LEDGER_PLUGIN_DIR}/manifest.json"
+  "${CMAKE_BINARY_DIR}/plugins/com.derp.ledger/manifest.json"
+)
+
+	# ---------------------
+	# Test Plugin
+	# ---------------------
+	set(TEST_PLUGIN_DIR src/plugins/test_plugin)
+
+	add_library(test_plugin MODULE
+		${CMAKE_CURRENT_SOURCE_DIR}/${TEST_PLUGIN_DIR}/TestPlugin.h
+		${CMAKE_CURRENT_SOURCE_DIR}/${TEST_PLUGIN_DIR}/TestPlugin.cpp
+		src/interfaces/DBaseModule.h
+	)
+
+	target_link_libraries(test_plugin PRIVATE Qt6::Widgets Qt6::Core Qt6::Gui)
+
+	target_include_directories(test_plugin PRIVATE
+		src/interfaces
+		${CMAKE_CURRENT_SOURCE_DIR}/${TEST_PLUGIN_DIR}
+	)
+
+	set_target_properties(test_plugin PROPERTIES
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins/com.derp.test"
+	)
+
+	add_custom_command(TARGET test_plugin POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${CMAKE_SOURCE_DIR}/${TEST_PLUGIN_DIR}/manifest.json"
+			"${CMAKE_BINARY_DIR}/plugins/com.derp.test/manifest.json"
+	)
+	

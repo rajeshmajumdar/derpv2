@@ -321,6 +321,13 @@ void StaffManager::handleIntent(const QString &intent,
       m_core->log("Committing permissions...");
     commitPermissions();
   }
+
+  // Shift focus to search bar
+  if (intent == "staff.search") {
+    if (m_core)
+      m_core->log("Shifting to search bar..");
+    handleSearch();
+  }
 }
 
 void StaffManager::onMessage(const QString &topic, const QVariantMap &data) {
@@ -585,7 +592,7 @@ void StaffManager::loadPermissionsForSelectedStaff() {
       [this](QJsonDocument response) {
         if (response.isNull() || !response.isObject()) {
           if (m_core)
-            m_core->log("[StaffManager] Failed to detch permissions from db.");
+            m_core->log("[StaffManager] Failed to fetch permissions from db.");
           return;
         }
 
@@ -617,4 +624,18 @@ void StaffManager::loadPermissionsForSelectedStaff() {
           }
         }
       });
+}
+
+void StaffManager::handleSearch() {
+  if (!m_searchBar)
+    return;
+
+  if (!m_searchBar->hasFocus()) {
+    m_searchBar->setFocus();
+    m_searchBar->selectAll();
+  } else {
+    m_searchBar->clearFocus();
+    if (m_staffTable)
+      m_staffTable->setFocus();
+  }
 }

@@ -213,7 +213,8 @@ void Kernel::initializeSystem() {
   syncIntentsToDatabase();
 
   const auto &modules = m_pluginManager->allModules();
-  m_uiManager->createNavBar(modules);
+  const auto &sortedIds = m_pluginManager->sortedModules();
+  m_uiManager->createNavBar(sortedIds, modules);
 
   connect(m_uiManager, &UIManager::navRequested, this, &Kernel::switchToModule);
 
@@ -227,8 +228,8 @@ void Kernel::initializeSystem() {
     }
   }
 
-  if (!modules.isEmpty()) {
-    switchToModule(modules.firstKey());
+  if (!sortedIds.isEmpty()) {
+    switchToModule(sortedIds.first());
   }
 
   // Set up the neovim-style input manager
@@ -372,27 +373,27 @@ void Kernel::syncIntentsToDatabase() {
 void Kernel::handleNavigatePrevModule() {
   if (!m_pluginManager)
     return;
-  const auto &modules = m_pluginManager->allModules();
-  QStringList keys = modules.keys();
-  if (keys.isEmpty())
+
+  const QList<QString> &sortedIds = m_pluginManager->sortedModules();
+  if (sortedIds.isEmpty())
     return;
 
-  int idx = keys.indexOf(m_activeModuleId);
-  int prev = (idx <= 0) ? keys.size() - 1 : idx - 1;
-  switchToModule(keys[prev]);
+  int idx = sortedIds.indexOf(m_activeModuleId);
+  int prev = (idx <= 0) ? sortedIds.size() - 1 : idx - 1;
+  switchToModule(sortedIds[prev]);
 }
 
 void Kernel::handleNavigateNextModule() {
   if (!m_pluginManager)
     return;
-  const auto &modules = m_pluginManager->allModules();
-  QStringList keys = modules.keys();
-  if (keys.isEmpty())
+
+  const QList<QString> &sortedIds = m_pluginManager->sortedModules();
+  if (sortedIds.isEmpty())
     return;
 
-  int idx = keys.indexOf(m_activeModuleId);
-  int next = (idx < 0 || idx >= keys.size() - 1) ? 0 : idx + 1;
-  switchToModule(keys[next]);
+  int idx = sortedIds.indexOf(m_activeModuleId);
+  int next = (idx < 0 || idx >= sortedIds.size() - 1) ? 0 : idx + 1;
+  switchToModule(sortedIds[next]);
 }
 
 void Kernel::handleNavigateUp() {

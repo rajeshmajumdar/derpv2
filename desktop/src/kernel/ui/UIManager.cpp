@@ -1,4 +1,5 @@
 #include "UIManager.h"
+#include "PluginManager.h"
 #include <QPixmap>
 #include <QStyle>
 #include <QVBoxLayout>
@@ -110,17 +111,19 @@ bool UIManager::isPaletteVisible() const {
 
 // ─── Navigation bar ──────────────────────────────────────────
 
-void UIManager::createNavBar(const QMap<QString, ModuleRecord *> &modules) {
+void UIManager::createNavBar(const QList<QString> &sortedIds,
+                             const QMap<QString, ModuleRecord *> &modules) {
   for (auto it = m_navButtons.begin(); it != m_navButtons.end(); ++it) {
     m_navLayout->removeWidget(it.value());
     delete it.value();
   }
   m_navButtons.clear();
 
-  for (auto it = modules.begin(); it != modules.end(); ++it) {
-    ModuleRecord *record = it.value();
+  for (const QString &id : sortedIds) {
+    ModuleRecord *record = modules.value(id);
+    if (!record)
+      continue;
     QString name = record->manifest["name"].toString().toUpper();
-    QString id = record->manifest["id"].toString();
     QString hotkey = record->manifest["hotkey"].toString().toLower();
 
     // Show hotkey hint in nav button text

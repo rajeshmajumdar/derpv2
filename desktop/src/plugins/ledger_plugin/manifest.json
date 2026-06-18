@@ -1,0 +1,21 @@
+{
+  "id": "com.derp.ledger",
+  "name": "Ledger",
+  "version": "1.0.0",
+  "role": "",
+  "hasUi": true,
+  "order": 2,
+  "hotkey": "b",
+  "private": {
+    "f5": "ledger.search"
+  },
+  "chord": {},
+  "intents": {
+    "c": "ledger.commit"
+  },
+  "permissions": {
+    "read": "Allows the user to view the ledger transactions.",
+    "write": "Permits the creation of new journal enteries",
+    "override": "Allows bypassing standard accounting locks for corrections"
+  }
+}

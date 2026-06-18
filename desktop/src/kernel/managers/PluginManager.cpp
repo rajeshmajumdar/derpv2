@@ -129,10 +129,30 @@ QString PluginManager::findModuleByGlobalSwitch(const QString &globalSwitch) {
 void PluginManager::buildRoutingTables() {
   m_globalSwitchMap.clear();
   m_hotkeyRegistry.clear();
+  m_sortedModuleIds.clear();
 
-  for (auto it = m_registry.begin(); it != m_registry.end(); ++it) {
-    const QString &moduleId = it.key();
-    const QJsonObject &manifest = it.value()->manifest;
+  m_sortedModuleIds = m_registry.keys();
+
+  std::sort(m_sortedModuleIds.begin(), m_sortedModuleIds.end(),
+            [this](const QString &a, const QString &b) {
+              ModuleRecord *recA = m_registry.value(a);
+              ModuleRecord *recB = m_registry.value(b);
+
+              int orderA = recA->manifest.contains("order")
+                               ? recA->manifest["order"].toVariant().toInt()
+                               : 999;
+              int orderB = recB->manifest.contains("order")
+                               ? recB->manifest["order"].toVariant().toInt()
+                               : 999;
+
+              if (orderA == orderB) {
+                return a < b;
+              }
+              return orderA < orderB;
+            });
+
+  for (const QString &moduleId : m_sortedModuleIds) {
+    const QJsonObject &manifest = m_registry[moduleId]->manifest;
 
     QString globalSwitchKey = manifest["hotkey"].toString().toLower().trimmed();
 
