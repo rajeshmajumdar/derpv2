@@ -1,19 +1,19 @@
-#ifndef TEST_PLUGIN_H
-#define TEST_PLUGIN_H
+#ifndef INVENTORY_PLUGIN_H
+#define INVENTORY_PLUGIN_H
 
 #include "../../interfaces/DBaseModule.h"
 #include <QWidget>
 #include <QLabel>
 #include <QVBoxLayout>
 
-class TestPlugin : public DBaseModule {
+class InventoryPlugin : public DBaseModule {
 	Q_OBJECT
-	Q_PLUGIN_METADATA(IID "com.derp.DModule" FILE "test_plugin.json")
+	Q_PLUGIN_METADATA(IID "com.derp.DModule" FILE "inventory_plugin.json")
 	Q_INTERFACES(DModule)
 
 	public:
-		explicit TestPlugin(QObject *parent = nullptr);
-		~TestPlugin() override;
+		explicit InventoryPlugin(QObject *parent = nullptr);
+		~InventoryPlugin() override;
 
 		DCore *getCore() const override { return m_core; }
 
@@ -28,5 +28,5 @@ class TestPlugin : public DBaseModule {
 		QWidget *m_widget = nullptr;
 };
 
-#endif // TEST_PLUGIN_H
+#endif // INVENTORY_PLUGIN_H
 	

@@ -1,17 +1,17 @@
 #include "InputManager.h"
-#include "../ui/CommandPalette.h"
 #include "../../interfaces/DModule.h"
+#include "../ui/CommandPalette.h"
 
 #include <QApplication>
-#include <QLineEdit>
-#include <QTextEdit>
-#include <QPlainTextEdit>
 #include <QComboBox>
-#include <QSpinBox>
 #include <QDebug>
+#include <QLineEdit>
+#include <QPlainTextEdit>
+#include <QSpinBox>
+#include <QTextEdit>
 
-InputManager::InputManager(PluginManager* pm, QObject* parent)
-  : QObject(parent), m_pluginManager(pm), m_commandBuffer("") {
+InputManager::InputManager(PluginManager *pm, QObject *parent)
+    : QObject(parent), m_pluginManager(pm), m_commandBuffer("") {
 
   m_timeoutTimer = new QTimer(this);
   m_timeoutTimer->setSingleShot(true);
@@ -24,46 +24,210 @@ InputManager::InputManager(PluginManager* pm, QObject* parent)
   });
 }
 
-
-bool InputManager::isTextInputWidget(QWidget* widget) const {
-  if (!widget) return false;
-  return widget->inherits("QLineEdit")
-      || widget->inherits("QTextEdit")
-      || widget->inherits("QPlainTextEdit")
-      || widget->inherits("QComboBox")
-      || widget->inherits("QSpinBox")
-      || widget->inherits("QDoubleSpinBox");
+bool InputManager::isTextInputWidget(QWidget *widget) const {
+  if (!widget)
+    return false;
+  return widget->inherits("QLineEdit") || widget->inherits("QTextEdit") ||
+         widget->inherits("QPlainTextEdit") || widget->inherits("QComboBox") ||
+         widget->inherits("QSpinBox") || widget->inherits("QDoubleSpinBox");
 }
 
-
-bool InputManager::handleBuiltinKey(const QString& key) {
-  if (key == "h") { emit navigatePrevModule(); return true; }
-  if (key == "l") { emit navigateNextModule(); return true; }
-  if (key == "j") { emit navigateDown(); return true; }
-  if (key == "k") { emit navigateUp(); return true; }
-  if (key == "/") { emit searchRequested(); return true; }
-  if (key == "x") { emit deleteRequested(); return true; }
+bool InputManager::handleBuiltinKey(const QString &key) {
+  if (key == "left") {
+    emit navigatePrevModule();
+    return true;
+  }
+  if (key == "right") {
+    emit navigateNextModule();
+    return true;
+  }
+  if (key == "/") {
+    emit searchRequested();
+    return true;
+  }
+  if (key == "delete") {
+    emit deleteRequested();
+    return true;
+  }
   return false;
 }
-
 
 bool InputManager::eventFilter(QObject *obj, QEvent *event) {
   if (event->type() != QEvent::KeyPress) {
     return QObject::eventFilter(obj, event);
   }
 
-  // Anti bubble gaurd: stop processing the same key multiple times as it bubbles up the ui tree
   if (obj != QApplication::focusWidget() && obj != parent()) {
     return QObject::eventFilter(obj, event);
   }
 
-  QKeyEvent *ke = static_cast<QKeyEvent*>(event);
+  QKeyEvent *ke = static_cast<QKeyEvent *>(event);
   QWidget *focusedWidget = QApplication::focusWidget();
 
   if (focusedWidget) {
-    QWidget* ancestor = focusedWidget;
+    QWidget *ancestor = focusedWidget;
     while (ancestor) {
-      if (qobject_cast<CommandPalette*>(ancestor)) {
+      if (qobject_cast<CommandPalette *>(ancestor)) {
+        return QObject::eventFilter(obj, event);
+      }
+      ancestor = ancestor->parentWidget();
+    }
+  }
+
+  QString keyText;
+  int rawKey = ke->key();
+
+  if (rawKey >= Qt::Key_F1 && rawKey <= Qt::Key_F12) {
+    keyText = QString("f%1").arg(rawKey - Qt::Key_F1 + 1);
+  } else if (rawKey == Qt::Key_Return || rawKey == Qt::Key_Enter) {
+    keyText = "return";
+  } else if (rawKey == Qt::Key_Delete) {
+    keyText = "delete";
+  } else if (rawKey == Qt::Key_Escape) {
+    keyText = "escape";
+  } else if (rawKey == Qt::Key_Up) {
+    keyText = "up";
+  } else if (rawKey == Qt::Key_Down) {
+    keyText = "down";
+  } else if (rawKey == Qt::Key_Left) {
+    keyText = "left";
+  } else if (rawKey == Qt::Key_Right) {
+    keyText = "right";
+  } else {
+    keyText = ke->text().toLower().trimmed();
+  }
+
+  if (ke->modifiers() & Qt::ControlModifier ||
+      ke->modifiers() & Qt::AltModifier) {
+    if ((ke->modifiers() & Qt::AltModifier) && rawKey == Qt::Key_L) {
+      emit logoutRequested();
+      return true;
+    }
+
+    if (ke->modifiers() & Qt::ControlModifier) {
+      QString charKey;
+      if (rawKey >= Qt::Key_A && rawKey <= Qt::Key_Z) {
+        charKey = QChar(rawKey).toLower();
+      } else {
+        charKey = ke->text().toLower().trimmed();
+      }
+
+      if (!charKey.isEmpty()) {
+        m_commandBuffer += charKey;
+        emit bufferChanged(m_commandBuffer);
+
+        if (m_commandBuffer.length() == 2) {
+          QString prefix = m_commandBuffer.left(1);
+          QString suffix = m_commandBuffer.mid(1, 1);
+          QString targetId = m_pluginManager->findModuleByGlobalSwitch(prefix);
+
+          if (!targetId.isEmpty()) {
+            DModule *targetPlugin =
+                m_pluginManager->getModuleInstance(targetId);
+            if (targetPlugin && targetPlugin->hasPublicChord(suffix)) {
+              m_timeoutTimer->stop();
+              m_pluginManager->setActiveModuleId(targetId);
+              emit moduleSwitchRequested(targetId);
+              targetPlugin->executeIntent(targetPlugin->getPublicIntent(suffix),
+                                          QVariantMap());
+            }
+          }
+
+          m_commandBuffer.clear();
+          emit bufferChanged(m_commandBuffer);
+          return true;
+        }
+
+        if (m_commandBuffer.length() == 1) {
+          QString targetModuleId =
+              m_pluginManager->findModuleByGlobalSwitch(m_commandBuffer);
+
+          if (!targetModuleId.isEmpty()) {
+            m_pluginManager->setActiveModuleId(targetModuleId);
+            emit moduleSwitchRequested(targetModuleId);
+
+            DModule *targetPlugin =
+                m_pluginManager->getModuleInstance(targetModuleId);
+            if (targetPlugin && targetPlugin->hasPublicChordsConfigured()) {
+              m_timeoutTimer->start(SEQUENCE_TIMEOUT_MS);
+            } else {
+              m_commandBuffer.clear();
+              emit bufferChanged(m_commandBuffer);
+            }
+            return true;
+          } else {
+            m_commandBuffer.clear();
+            emit bufferChanged(m_commandBuffer);
+            return QObject::eventFilter(obj, event);
+          }
+        }
+      }
+    }
+    return QObject::eventFilter(obj, event);
+  }
+
+  bool isTextInput = isTextInputWidget(QApplication::focusWidget());
+  if (isTextInput && keyText != "escape") {
+    if (!(keyText.startsWith("f") || keyText == "delete" ||
+          keyText == "return" || keyText == "up" || keyText == "down")) {
+      return QObject::eventFilter(obj, event);
+    }
+  }
+
+  if (keyText == "escape") {
+    if (isTextInput)
+      QApplication::focusWidget()->clearFocus();
+    return true;
+  }
+
+  QString activeModuleId = m_pluginManager->activeModuleId();
+  DModule *activePlugin = m_pluginManager->getModuleInstance(activeModuleId);
+
+  if (activePlugin) {
+    if (activePlugin->hasPrivateBinding(keyText)) {
+      activePlugin->executeIntent(activePlugin->getPrivateIntent(keyText),
+                                  QVariantMap());
+      return true;
+    }
+  }
+
+  if (handleBuiltinKey(keyText)) {
+    return true;
+  }
+
+  // Global type-to-search jump
+  if (!isTextInput && !ke->text().isEmpty() && ke->text().at(0).isPrint()) {
+    if (activePlugin) {
+      QVariantMap payload;
+      payload["text"] =
+          ke->text(); // send exact character preserve lower/uppercase
+      activePlugin->executeIntent("type_to_search", payload);
+      return true;
+    }
+  }
+
+  return QObject::eventFilter(obj, event);
+}
+
+/*
+bool InputManager::eventFilter(QObject *obj, QEvent *event) {
+  if (event->type() != QEvent::KeyPress) {
+    return QObject::eventFilter(obj, event);
+  }
+
+  // Anti bubble gaurd: stop processing the same key multiple times as it
+  // bubbles up the ui tree
+  if (obj != QApplication::focusWidget() && obj != parent()) {
+    return QObject::eventFilter(obj, event);
+  }
+
+  QKeyEvent *ke = static_cast<QKeyEvent *>(event);
+  QWidget *focusedWidget = QApplication::focusWidget();
+
+  if (focusedWidget) {
+    QWidget *ancestor = focusedWidget;
+    while (ancestor) {
+      if (qobject_cast<CommandPalette *>(ancestor)) {
         return QObject::eventFilter(obj, event);
       }
       ancestor = ancestor->parentWidget();
@@ -84,6 +248,14 @@ bool InputManager::eventFilter(QObject *obj, QEvent *event) {
     keyText = "tab";
   } else if (rawKey == Qt::Key_Escape) {
     keyText = "escape";
+  } else if (rawKey == Qt::Key_Up) {
+    keyText = "up";
+  } else if (rawKey == Qt::Key_Down) {
+    keyText = "down";
+  } else if (rawKey == Qt::Key_Left) {
+    keyText = "left";
+  } else if (rawKey == Qt::Key_Right) {
+    keyText = "right";
   } else {
     keyText = ke->text().toLower().trimmed();
   }
@@ -94,7 +266,8 @@ bool InputManager::eventFilter(QObject *obj, QEvent *event) {
   }
 
   // Let ctrl/alt shortcuts pass through to the os
-  if (ke->modifiers() & Qt::ControlModifier || ke->modifiers() & Qt::AltModifier) {
+  if (ke->modifiers() & Qt::ControlModifier ||
+      ke->modifiers() & Qt::AltModifier) {
     // keep alt+l for logout
     if (!((ke->modifiers() & Qt::AltModifier) && rawKey == Qt::Key_L)) {
       return QObject::eventFilter(obj, event);
@@ -104,14 +277,16 @@ bool InputManager::eventFilter(QObject *obj, QEvent *event) {
   // text input protection
   bool isTextInput = isTextInputWidget(QApplication::focusWidget());
   if (isTextInput && keyText != "escape") {
-    if (!(keyText.startsWith("f") || keyText == "delete" || keyText == "return")) {
+    if (!(keyText.startsWith("f") || keyText == "delete" ||
+          keyText == "return")) {
       return QObject::eventFilter(obj, event);
     }
   }
 
   // escape routing
   if (keyText == "escape") {
-    if (isTextInput) QApplication::focusWidget()->clearFocus();
+    if (isTextInput)
+      QApplication::focusWidget()->clearFocus();
     m_mode = Mode::NORMAL;
     m_commandBuffer.clear();
     m_timeoutTimer->stop();
@@ -129,16 +304,89 @@ bool InputManager::eventFilter(QObject *obj, QEvent *event) {
     return true;
   }
 
+  if (ke->modifiers() & Qt::ControlModifier) {
+    QString charKey;
+    if (rawKey >= Qt::Key_A && rawKey <= Qt::Key_Z) {
+      charKey = QChar(rawKey).toLower();
+    } else {
+      charKey = ke->text().toLower().trimmed();
+    }
+
+    if (!charKey.isEmpty()) {
+      m_commandBuffer += charKey;
+      emit bufferChanged(m_commandBuffer);
+
+      if (m_commandBuffer.length() == 2) {
+        QString prefix = m_commandBuffer.left(1);
+        QString suffix = m_commandBuffer.mid(1, 1);
+        QString targetId = m_pluginManager->findModuleByGlobalSwitch(prefix);
+
+        if (!targetId.isEmpty()) {
+          DModule *targetPlugin = m_pluginManager->getModuleInstance(targetId);
+          if (targetPlugin && targetPlugin->hasPublicChord(suffix)) {
+            m_timeoutTimer->stop();
+            m_pluginManager->setActiveModuleId(targetId);
+            emit moduleSwitchRequested(targetId);
+            targetPlugin->executeIntent(targetPlugin->getPublicIntent(suffix),
+                                        QVariantMap());
+            m_commandBuffer.clear();
+            emit bufferChanged(m_commandBuffer);
+            return true;
+          }
+        }
+
+        m_commandBuffer.clear();
+        emit bufferChanged(m_commandBuffer);
+        m_timeoutTimer->stop();
+        return QObject::eventFilter(obj, event);
+      }
+
+      if (m_commandBuffer.length() == 1) {
+        QString targetModuleId =
+            m_pluginManager->findModuleByGlobalSwitch(m_commandBuffer);
+
+        if (!targetModuleId.isEmpty()) {
+          m_pluginManager->setActiveModuleId(targetModuleId);
+          emit moduleSwitchRequested(targetModuleId);
+
+          DModule *targetPlugin =
+              m_pluginManager->getModuleInstance(targetModuleId);
+          if (targetPlugin && targetPlugin->hasPublicChordsConfigured()) {
+            m_timeoutTimer->start(SEQUENCE_TIMEOUT_MS);
+          } else {
+            m_commandBuffer.clear();
+            emit bufferChanged(m_commandBuffer);
+          }
+          return true;
+        } else {
+          m_commandBuffer.clear();
+          emit bufferChanged(m_commandBuffer);
+          return QObject::eventFilter(obj, event);
+        }
+      }
+    }
+    return QObject::eventFilter(obj, event);
+  }
+
   // Priority 1: Private bindings
   QString activeModuleId = m_pluginManager->activeModuleId();
-  DModule* activePlugin = m_pluginManager->getModuleInstance(activeModuleId);
+  DModule *activePlugin = m_pluginManager->getModuleInstance(activeModuleId);
 
   if (activePlugin && m_commandBuffer.isEmpty()) {
     if (activePlugin->hasPrivateBinding(keyText)) {
       m_timeoutTimer->stop();
-      activePlugin->executeIntent(activePlugin->getPrivateIntent(keyText), QVariantMap());
+      activePlugin->executeIntent(activePlugin->getPrivateIntent(keyText),
+                                  QVariantMap());
       return true; // so it doesn't bleed
     }
+  }
+
+  if (m_commandBuffer.isEmpty() && handleBuiltinKey(keyText)) {
+    return true;
+  }
+
+  if (keyText.length() > 1) {
+    return QObject::eventFilter(obj, event);
   }
 
   m_commandBuffer += keyText;
@@ -151,7 +399,7 @@ bool InputManager::eventFilter(QObject *obj, QEvent *event) {
     QString targetId = m_pluginManager->findModuleByGlobalSwitch(prefix);
 
     if (!targetId.isEmpty()) {
-      DModule* targetPlugin = m_pluginManager->getModuleInstance(targetId);
+      DModule *targetPlugin = m_pluginManager->getModuleInstance(targetId);
       if (targetPlugin && targetPlugin->hasPublicChord(suffix)) {
         m_timeoutTimer->stop();
 
@@ -159,7 +407,8 @@ bool InputManager::eventFilter(QObject *obj, QEvent *event) {
         m_pluginManager->setActiveModuleId(targetId);
 
         emit moduleSwitchRequested(targetId);
-        targetPlugin->executeIntent(targetPlugin->getPublicIntent(suffix), QVariantMap());
+        targetPlugin->executeIntent(targetPlugin->getPublicIntent(suffix),
+                                    QVariantMap());
         m_commandBuffer.clear();
         emit bufferChanged(m_commandBuffer);
         return true;
@@ -174,13 +423,15 @@ bool InputManager::eventFilter(QObject *obj, QEvent *event) {
 
   // priority 3: global switches and look-ahead
   if (m_commandBuffer.length() == 1) {
-    QString targetModuleId = m_pluginManager->findModuleByGlobalSwitch(m_commandBuffer);
+    QString targetModuleId =
+        m_pluginManager->findModuleByGlobalSwitch(m_commandBuffer);
     if (!targetModuleId.isEmpty()) {
       // keep state synchronized internally
       m_pluginManager->setActiveModuleId(targetModuleId);
       emit moduleSwitchRequested(targetModuleId);
 
-      DModule* targetPlugin = m_pluginManager->getModuleInstance(targetModuleId);
+      DModule *targetPlugin =
+          m_pluginManager->getModuleInstance(targetModuleId);
       if (targetPlugin && targetPlugin->hasPublicChordsConfigured()) {
         m_timeoutTimer->start(SEQUENCE_TIMEOUT_MS);
       } else {
@@ -203,7 +454,7 @@ bool InputManager::eventFilter(QObject *obj, QEvent *event) {
   emit bufferChanged(m_commandBuffer);
   return QObject::eventFilter(obj, event);
 }
-
+*/
 
 void InputManager::enterNormalMode() {
   m_mode = Mode::NORMAL;
@@ -213,7 +464,7 @@ void InputManager::enterNormalMode() {
   emit bufferChanged(m_commandBuffer);
 }
 
-
-void InputManager::executeCommand(const QString& command) {
-  emit logRequired("DEPRECATED: functionality merged directly up into the core event filter prioritization tree.");
+void InputManager::executeCommand(const QString &command) {
+  emit logRequired("DEPRECATED: functionality merged directly up into the core "
+                   "event filter prioritization tree.");
 }

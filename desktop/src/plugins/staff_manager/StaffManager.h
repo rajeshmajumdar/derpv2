@@ -2,6 +2,7 @@
 #define STAFFMANAGER_H
 
 #include "../../interfaces/DBaseModule.h"
+#include "../widgets/DTableWidget.h"
 #include <QLabel>
 #include <QObject>
 #include <QVariantMap>
@@ -38,11 +39,11 @@ private:
   QWidget *m_widget = nullptr;
   QLabel *m_statusLabel = nullptr;
 
-  QTableWidget *m_staffTable = nullptr;
+  DTableWidget *m_staffTable = nullptr;
   QLineEdit *m_searchBar = nullptr;
 
   QLabel *m_activeUserLabel = nullptr;
-  QTableWidget *m_permissionMatrixTable = nullptr;
+  DTableWidget *m_permissionMatrixTable = nullptr;
   QPushButton *m_saveBtn = nullptr;
   QPushButton *m_revokeBtn = nullptr;
 

@@ -1,9 +1,9 @@
 {
   "id": "staff_manager",
-  "name": "User Management",
+  "name": "Staff",
   "hasUi": true,
-  "hotkey": "u",
-  "order": 3,
+  "hotkey": "s",
+  "order": 2,
   "role": "master",
   "chord": {
     "n": {
@@ -19,8 +19,8 @@
     "f2": "staff.create",
     "f5": "staff.search",
     "f4": "staff.commit_permissions",
-    "j": "staff.nav_down",
-    "k": "staff.nav_up",
+    "up": "staff.nav_up",
+    "down": "staff.nav_down",
     "delete": "revokeAccessActionIntent"
   }
 }

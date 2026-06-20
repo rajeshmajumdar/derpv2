@@ -194,7 +194,7 @@ QVariant %s::onServiceRequest(const QString &method, const QVariantMap &params) 
 		src/interfaces/DBaseModule.h
 	)
 
-	target_link_libraries(%s PRIVATE Qt6::Widgets Qt6::Core Qt6::Gui)
+	target_link_libraries(%s PRIVATE Qt6::Widgets Qt6::Core Qt6::Gui shared_widgets)
 
 	target_include_directories(%s PRIVATE
 		src/interfaces

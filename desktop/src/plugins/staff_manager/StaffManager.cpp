@@ -177,15 +177,15 @@ QWidget *StaffManager::createView(QWidget *parent) {
     leftLayout->addWidget(m_searchBar);
 
     // Directory grid table
-    m_staffTable = new QTableWidget(0, 4, leftPane);
-    m_staffTable->setHorizontalHeaderLabels({"ID", "NAME", "ROLE", "STATUS"});
-    m_staffTable->horizontalHeader()->setSectionResizeMode(
-        QHeaderView::Stretch);
-    m_staffTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_staffTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_staffTable->setStyleSheet(tableStyle);
+    m_staffTable = new DTableWidget(leftPane);
+    m_staffTable->setup({"ID", "NAME", "ROLE", "STATUS"});
+    m_staffTable->setSearchable(true);
     connect(m_staffTable, &QTableWidget::itemSelectionChanged, this,
             &StaffManager::loadPermissionsForSelectedStaff);
+    connect(m_staffTable, &DTableWidget::typingDetected, m_searchBar,
+            &QLineEdit::setText);
+    connect(m_searchBar, &QLineEdit::textChanged, m_staffTable,
+            &DTableWidget::filterData);
     leftLayout->addWidget(m_staffTable);
 
     // RIGHT PANE
@@ -214,13 +214,10 @@ QWidget *StaffManager::createView(QWidget *parent) {
     topRightLayout->addWidget(newStaffBtn);
     rightLayout->addLayout(topRightLayout);
 
-    m_permissionMatrixTable = new QTableWidget(0, 5, rightPane);
-    m_permissionMatrixTable->setHorizontalHeaderLabels(
+    m_permissionMatrixTable = new DTableWidget(rightPane);
+    m_permissionMatrixTable->setup(
         {"SYSTEM MODULE", "READ", "WRITE", "DELETE", "OVERRIDE"});
-    m_permissionMatrixTable->horizontalHeader()->setSectionResizeMode(
-        QHeaderView::Stretch);
     m_permissionMatrixTable->setSelectionMode(QAbstractItemView::NoSelection);
-    m_permissionMatrixTable->setStyleSheet(tableStyle);
     rightLayout->addWidget(m_permissionMatrixTable);
 
     leftLayout->addStretch(1);
@@ -297,20 +294,18 @@ void StaffManager::handleIntent(const QString &intent,
     return;
   }
 
-  // staff.nav_down
-  if (intent == "staff.nav_down") {
-    int currentRow = m_staffTable->currentRow();
-    if (currentRow < m_staffTable->rowCount() - 1) {
-      m_staffTable->selectRow(currentRow + 1);
-    }
-    return;
-  }
-
-  // staff.nav_up
   if (intent == "staff.nav_up") {
     int currentRow = m_staffTable->currentRow();
     if (currentRow > 0) {
       m_staffTable->selectRow(currentRow - 1);
+    }
+    return;
+  }
+
+  if (intent == "staff.nav_down") {
+    int currentRow = m_staffTable->currentRow();
+    if (currentRow < m_staffTable->rowCount() - 1) {
+      m_staffTable->selectRow(currentRow + 1);
     }
     return;
   }
@@ -327,6 +322,16 @@ void StaffManager::handleIntent(const QString &intent,
     if (m_core)
       m_core->log("Shifting to search bar..");
     handleSearch();
+  }
+
+  // global type-to-search
+  if (intent == "type_to_search") {
+    QString typedChar = data.value("text").toString();
+    if (m_searchBar) {
+      m_searchBar->setFocus();
+      m_searchBar->insert(typedChar);
+    }
+    return;
   }
 }
 
@@ -367,7 +372,7 @@ void StaffManager::fetchStaffList() {
 
                     QJsonArray staffArray = response.array();
 
-                    m_staffTable->setRowCount(0);
+                    m_staffTable->clearData();
 
                     auto createVisibleItem = [](const QString &text) {
                       auto *item = new QTableWidgetItem(text);
@@ -382,14 +387,7 @@ void StaffManager::fetchStaffList() {
                       QString username = staffObj["username"].toString();
                       QString role = staffObj["role"].toString().toUpper();
 
-                      m_staffTable->insertRow(i);
-                      m_staffTable->setItem(i, 0, createVisibleItem(id));
-                      m_staffTable->setItem(i, 1, createVisibleItem(username));
-                      m_staffTable->setItem(i, 2, createVisibleItem(role));
-
-                      auto *statusItem = createVisibleItem("ACTIVE");
-                      statusItem->setForeground(QBrush(QColor("#2E7D32")));
-                      m_staffTable->setItem(i, 3, statusItem);
+                      m_staffTable->addRow({id, username, role, "ACTIVE"});
                     }
 
                     if (m_staffTable->rowCount() > 0) {
@@ -413,9 +411,7 @@ void StaffManager::setupPermissionMatrixUI() {
         }
         m_permissionMatrixTable->setSortingEnabled(false);
 
-        m_permissionMatrixTable->setColumnCount(3);
-        m_permissionMatrixTable->setHorizontalHeaderLabels(
-            {"ACTION", "DESCRIPTION", "ALLOWED"});
+        m_permissionMatrixTable->setup({"ACTION", "DESCRIPTION", "ALLOWED"});
 
         m_permissionMatrixTable->horizontalHeader()->setSectionResizeMode(
             0, QHeaderView::ResizeToContents);
@@ -426,17 +422,6 @@ void StaffManager::setupPermissionMatrixUI() {
         m_permissionMatrixTable->horizontalHeader()->resizeSection(2, 100);
 
         m_permissionMatrixTable->setRowCount(0);
-
-        m_permissionMatrixTable->setStyleSheet(
-            "QTableWidget { background-color: #FFFFFF; color: #212121; "
-            "gridline-color: #E0E0E0; }"
-            "QToolTip { color: #ffffff; background-color: #263238; border: 1px "
-            "solid #B0BEC5; padding: 5px; font-size: 12px; font-weight: bold; "
-            "border-radius: 4px; }");
-
-        m_permissionMatrixTable->horizontalHeader()->setStyleSheet(
-            "QHeaderView::section { background-color: #ECEFF1; color: #1A237E; "
-            "font-weight: 900; padding: 6px; border: 1px solid #CFD8DC; }");
 
         auto createVisibleItem = [](const QString &text, bool isHeader = false,
                                     bool isDescription = false) {

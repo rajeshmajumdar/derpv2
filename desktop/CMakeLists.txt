@@ -57,26 +57,26 @@ target_include_directories(kernel PRIVATE
   ${KERNEL_DIR}/controllers
 )
 
+
+# --------------------------
+# Shared widget library
+# --------------------------
+set(WIDGETS_DIR src/widgets)
+
+add_library(shared_widgets STATIC
+  ${WIDGETS_DIR}/DTableWidget.h
+  ${WIDGETS_DIR}/DTableWidget.cpp
+)
+
+target_link_libraries(shared_widgets PRIVATE Qt6::Widgets Qt6::Core Qt6::Gui)
+
+target_include_directories(shared_widgets PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/${WIDGETS_DIR}
+)
+
 # --------------------------
 # Plugins
 # --------------------------
-set(DUMMY_PLUGIN_DIR src/plugins/dummy_plugin)
-
-add_library(dummy_plugin MODULE
-  ${DUMMY_PLUGIN_DIR}/DummyPlugin.h
-  ${DUMMY_PLUGIN_DIR}/DummyPlugin.cpp
-  src/interfaces/DBaseModule.h
-)
-
-target_link_libraries(dummy_plugin PRIVATE Qt6::Widgets Qt6::Core)
-
-target_include_directories(dummy_plugin PRIVATE
-  src/interfaces
-  ${CMAKE_CURRENT_SOURCE_DIR}/${DUMMY_PLUGIN_DIR}
-)
-
-
-
 set(DASHBOARD_PLUGIN_DIR src/plugins/dashboard_plugin)
 
 add_library(dashboard_plugin MODULE
@@ -102,30 +102,12 @@ add_library(staff_manager MODULE
   src/interfaces/DBaseModule.h
 )
 
-target_link_libraries(staff_manager PRIVATE Qt6::Widgets Qt6::Core)
+target_link_libraries(staff_manager PRIVATE Qt6::Widgets Qt6::Core shared_widgets)
 
 target_include_directories(staff_manager PRIVATE
   src/interfaces
   ${CMAKE_CURRENT_SOURCE_DIR}/${STAFF_MANAGER_DIR}
 )
-
-
-
-set(LEDGER_PLUGIN_DIR src/plugins/ledger_plugin)
-
-add_library(ledger_plugin MODULE
-  ${LEDGER_PLUGIN_DIR}/LedgerPlugin.h
-  ${LEDGER_PLUGIN_DIR}/LedgerPlugin.cpp
-  src/interfaces/DBaseModule.h
-)
-
-target_link_libraries(ledger_plugin PRIVATE Qt6::Widgets Qt6::Core)
-
-target_include_directories(ledger_plugin PRIVATE
-  src/interfaces
-  ${CMAKE_CURRENT_SOURCE_DIR}/${LEDGER_PLUGIN_DIR}
-)
-
 # Deploy server.exe alongside kernel.exe
 add_custom_command(TARGET kernel POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -136,15 +118,6 @@ add_custom_command(TARGET kernel POST_BUILD
 # ------------------------
 # POST-BUILD
 # ------------------------
-set_target_properties(dummy_plugin PROPERTIES
-  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins/com.derp.dummy"
-)
-add_custom_command(TARGET dummy_plugin POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_SOURCE_DIR}/${DUMMY_PLUGIN_DIR}/manifest.json"
-    "${CMAKE_BINARY_DIR}/plugins/com.derp.dummy/manifest.json"
-)
-
 set_target_properties(dashboard_plugin PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins/com.derp.dashboard"
 )
@@ -163,40 +136,31 @@ add_custom_command(TARGET staff_manager POST_BUILD
     "${CMAKE_BINARY_DIR}/plugins/com.derp.staff_manager/manifest.json"
 )
 
-set_target_properties(ledger_plugin PROPERTIES
-  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins/com.derp.ledger"
-)
-add_custom_command(TARGET ledger_plugin POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-  "${CMAKE_SOURCE_DIR}/${LEDGER_PLUGIN_DIR}/manifest.json"
-  "${CMAKE_BINARY_DIR}/plugins/com.derp.ledger/manifest.json"
-)
-
 	# ---------------------
-	# Test Plugin
+	# Inventory Plugin
 	# ---------------------
-	set(TEST_PLUGIN_DIR src/plugins/test_plugin)
+	set(INVENTORY_PLUGIN_DIR src/plugins/inventory_plugin)
 
-	add_library(test_plugin MODULE
-		${CMAKE_CURRENT_SOURCE_DIR}/${TEST_PLUGIN_DIR}/TestPlugin.h
-		${CMAKE_CURRENT_SOURCE_DIR}/${TEST_PLUGIN_DIR}/TestPlugin.cpp
+	add_library(inventory_plugin MODULE
+		${CMAKE_CURRENT_SOURCE_DIR}/${INVENTORY_PLUGIN_DIR}/InventoryPlugin.h
+		${CMAKE_CURRENT_SOURCE_DIR}/${INVENTORY_PLUGIN_DIR}/InventoryPlugin.cpp
 		src/interfaces/DBaseModule.h
 	)
 
-	target_link_libraries(test_plugin PRIVATE Qt6::Widgets Qt6::Core Qt6::Gui)
+	target_link_libraries(inventory_plugin PRIVATE Qt6::Widgets Qt6::Core Qt6::Gui shared_widgets)
 
-	target_include_directories(test_plugin PRIVATE
+	target_include_directories(inventory_plugin PRIVATE
 		src/interfaces
-		${CMAKE_CURRENT_SOURCE_DIR}/${TEST_PLUGIN_DIR}
+		${CMAKE_CURRENT_SOURCE_DIR}/${INVENTORY_PLUGIN_DIR}
 	)
 
-	set_target_properties(test_plugin PROPERTIES
-		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins/com.derp.test"
+	set_target_properties(inventory_plugin PROPERTIES
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins/com.derp.inventory"
 	)
 
-	add_custom_command(TARGET test_plugin POST_BUILD
+	add_custom_command(TARGET inventory_plugin POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different
-			"${CMAKE_SOURCE_DIR}/${TEST_PLUGIN_DIR}/manifest.json"
-			"${CMAKE_BINARY_DIR}/plugins/com.derp.test/manifest.json"
+			"${CMAKE_SOURCE_DIR}/${INVENTORY_PLUGIN_DIR}/manifest.json"
+			"${CMAKE_BINARY_DIR}/plugins/com.derp.inventory/manifest.json"
 	)
 	
